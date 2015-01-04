@@ -1,0 +1,4 @@
+exportPattern("^[[:alpha:]]+")
+import(GenomicRanges)
+import(ggplot2)
+import(reshape2)

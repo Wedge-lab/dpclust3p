@@ -1,0 +1,12 @@
+Package: dpclust3p
+Type: Package
+Title: Dirichlet Process Clustering Pre-Processing Pipeline
+Version: 1.0
+Date: 2015-01-04
+Author: Stefan Dentro
+Maintainer: Stefan Dentro <sd11@sanger.ac.uk>
+License: GPL-3
+LazyLoad: yes
+Description: Package that takes various inputs, phases mutations against other mutations and copynumber, 
+    transforms allele frequencies into an estimate of fraction of cells (CCF) and generates a number of 
+    QC figures to assess the data quality.
