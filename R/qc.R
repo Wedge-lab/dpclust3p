@@ -25,19 +25,19 @@ createPng <- function(p, filename, width, height) {
 meltFacetPlotData <- function(data, subsamplenames) {
   d = as.data.frame(data)
   colnames(d) = subsamplenames
-  data.m = melt(d)
+  data.m = reshape2::melt(d)
   return(data.m)
 }
 
 createHistFacetPlot <- function(data, title, xlab, ylab, binwidth) {
-  p = ggplot(data) + aes(x=value, y=..count..) + geom_histogram(binwidth=binwidth, colour="black", fill="gray") + facet_grid(variable ~ .)
-  p = p + theme_bw(base_size=35) + ggtitle(title) + xlab(xlab) + ylab(ylab)
+  p = ggplot2::ggplot(data) + ggplot2::aes(x=value, y=..count..) + ggplot2::geom_histogram(binwidth=binwidth, colour="black", fill="gray") + ggplot2::facet_grid(variable ~ .)
+  p = p + ggplot2::theme_bw(base_size=35) + ggplot2::ggtitle(title) + ggplot2::xlab(xlab) + ggplot2::ylab(ylab)
   return(p)
 }
 
 createBoxFacetPlot <- function(data, title, xlab, ylab) {
-  p = ggplot(data) + aes(x=variable, y=value) + geom_boxplot() + facet_grid(subsample ~ .)
-  p = p + theme_bw() + ggtitle(title) + xlab(xlab) + ylab(ylab)
+  p = ggplot2::ggplot(data) + ggplot2::aes(x=variable, y=value) + ggplot2::geom_boxplot() + ggplot2::facet_grid(subsample ~ .)
+  p = p + ggplot2::theme_bw() + ggplot2::ggtitle(title) + ggplot2::xlab(xlab) + ggplot2::ylab(ylab)
   return(p)
 }
 
@@ -46,11 +46,11 @@ createQCDocument <- function(res, samplename, subsamplenames, outpath, cellulari
   createPng(p, paste(outpath, samplename, "_totalCopyNumber.png", sep=""), width=1500, height=500*length(subsamplenames))
   
   p = createHistFacetPlot(meltFacetPlotData(res$mutation.copy.number, subsamplenames), paste(samplename, "mutation.copy.number"), "mutation.copy.number", "Count", binwidth=0.1)
-  p = p + xlim(0,5)
+  p = p + ggplot2::xlim(0,5)
   createPng(p, paste(outpath, samplename, "_mutation.copy.number.png", sep=""), width=1500, height=500*length(subsamplenames))
   
   p = createHistFacetPlot(meltFacetPlotData(res$copyNumberAdjustment, subsamplenames), paste(samplename, "copyNumberAdjustment"), "copyNumberAdjustment", "Count (log10)", binwidth=1)
-  p = p + scale_y_log10()
+  p = p + ggplot2::scale_y_log10()
   createPng(p, paste(outpath, samplename, "_copyNumberAdjustment.png", sep=""), width=1500, height=500*length(subsamplenames))
   
   p = createHistFacetPlot(meltFacetPlotData(res$mutCount/(res$mutCount+res$WTCount), subsamplenames), paste(samplename, "alleleFrequency"), "Allele Frequency", "Count", binwidth=0.01)
@@ -68,7 +68,7 @@ createQCDocument <- function(res, samplename, subsamplenames, outpath, cellulari
   #   fractionOfCells = res$mutation.copy.number / res$copyNumberAdjustment
   #   meltFacetPlotData(fractionOfCells, subsamplenames)
   p = createHistFacetPlot(meltFacetPlotData(res$subclonal.fraction, subsamplenames), paste(samplename, "Fraction Of Cells"), "Fraction of Cells", "Count", binwidth=0.05)
-  p = p + geom_vline(xintercept=0.5, colour="red", linetype="longdash", size=2) + geom_vline(xintercept=1.5, colour="red", linetype="longdash", size=2) + xlim(0,3) #scale_y_log10()
+  p = p + ggplot2::geom_vline(xintercept=0.5, colour="red", linetype="longdash", size=2) + ggplot2::geom_vline(xintercept=1.5, colour="red", linetype="longdash", size=2) + ggplot2::xlim(0,3) #scale_y_log10()
   createPng(p, paste(outpath, samplename, "_fractionOfCells.png", sep=""), width=1500, height=500*length(subsamplenames))
   
   #   manualMutCopyNum = mutationBurdenToMutationCopyNumber(res$mutCount/(res$mutCount+res$WTCount),res$totalCopyNumber ,cellularity)
