@@ -244,7 +244,7 @@
 ##############################################
 # GetDirichletProcessInfo
 ##############################################
-runGetDirichletProcessInfo = function(loci_file, allele_frequencies_file, cellularity_file, subclone_file, gender, SNP.phase.file, mut.phase.file) {
+runGetDirichletProcessInfo = function(loci_file, allele_frequencies_file, cellularity_file, subclone_file, gender, SNP.phase.file, mut.phase.file, output_file) {
   if(gender == 'male' | gender == 'Male') {
     isMale = T
   } else if(gender == 'female' | gender == 'Female') {
