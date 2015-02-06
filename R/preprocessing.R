@@ -175,7 +175,7 @@ run_linkage_pull_snp = function(loci_file, bam_file, bai_file, chr, pos1, ref1, 
 }
 
 
-mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, outfile, max.distance) {
+mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, outfile, max_distance) {
   
   if (file.info(loci_file)$size == 0) {
     linked.muts = data.frame(matrix(rep(NA, 13), nrow=1))
