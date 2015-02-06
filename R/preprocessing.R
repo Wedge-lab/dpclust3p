@@ -268,7 +268,7 @@ GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, 
   
   subclone.data = read.table(subclone.file,sep="\t",header=T,row.names=1, stringsAsFactors=F)
   #   subclone.data$subclonal.CN = (subclone.data$nMaj1_A + subclone.data$nMin1_A) * subclone.data$frac1_A
-  subclone.data.gr = GenomicRanges::GRanges(subclone.data$chr, IRanges(subclone.data$startpos, subclone.data$endpos), rep('*', nrow(subclone.data)))
+  subclone.data.gr = GenomicRanges::GRanges(subclone.data$chr, IRanges::IRanges(subclone.data$startpos, subclone.data$endpos), rep('*', nrow(subclone.data)))
   elementMetadata(subclone.data.gr) = subclone.data[,3:ncol(subclone.data)]
   # 	info2 = as.data.frame(cbind(as.data.frame(info), array(NA, c(length(info), 7))))
   #   colnames(info2) = c('chr','pos','WT.count','mut.count','subclonal.CN','nMaj1','nMin1','frac1','nMaj2','nMin2','frac2')
@@ -290,7 +290,7 @@ GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, 
   phasing = read.table(SNP.phase.file, header=T, stringsAsFactors=F) #header=T, skip=1, 
   print(head(phasing))
   print(phasing$Pos1[!is.numeric(phasing$Pos1)])
-  phasing.gr = GenomicRanges::GRanges(phasing$Chr, IRanges(phasing$Pos1, phasing$Pos1))
+  phasing.gr = GenomicRanges::GRanges(phasing$Chr, IRanges::IRanges(phasing$Pos1, phasing$Pos1))
   phasing.gr$phasing = phasing$Parental
   inds = findOverlaps(info, phasing.gr)  
   info$phase[queryHits(inds)] = phasing.gr$phasing[subjectHits(inds)]
@@ -445,12 +445,12 @@ GetWTandMutCount <- function(loci_file, allele_frequencies_file) {
   subs.data[,3] = apply(as.data.frame(subs.data[,3]), 1, function(x) { substring(x, 1,1) })
   subs.data[,4] = apply(as.data.frame(subs.data[,4]), 1, function(x) { substring(x, 1,1) })
   
-  subs.data.gr = GenomicRanges::GRanges(subs.data[,1], IRanges(subs.data[,2], subs.data[,2]), rep('*', nrow(subs.data)))
+  subs.data.gr = GenomicRanges::GRanges(subs.data[,1], IRanges::IRanges(subs.data[,2], subs.data[,2]), rep('*', nrow(subs.data)))
   elementMetadata(subs.data.gr) = subs.data[,c(3,4)]
   
   alleleFrequencies = read.table(allele_frequencies_file, sep='\t',header=T, stringsAsFactors=F)
   print(head(alleleFrequencies))
-  alleleFrequencies.gr = GenomicRanges::GRanges(alleleFrequencies[,1], IRanges(alleleFrequencies[,2], alleleFrequencies[,2]), rep('*', nrow(alleleFrequencies)))
+  alleleFrequencies.gr = GenomicRanges::GRanges(alleleFrequencies[,1], IRanges::IRanges(alleleFrequencies[,2], alleleFrequencies[,2]), rep('*', nrow(alleleFrequencies)))
   elementMetadata(alleleFrequencies.gr) = alleleFrequencies[,3:7]
   print("1")
   ref.indices = match(subs.data[,3],nucleotides)
@@ -463,7 +463,7 @@ GetWTandMutCount <- function(loci_file, allele_frequencies_file) {
   combined = data.frame(chr=subs.data[,1],pos=subs.data[,2],WTCount=WT.count, mutCount=mut.count)
   colnames(combined) = c("chr","pos","WT.count","mut.count")
   print("3")
-  #   combined.gr = GenomicRanges::GRanges(subs.data[,1], IRanges(subs.data[,2], subs.data[,2]+1), rep('*', nrow(subs.data)))
+  #   combined.gr = GenomicRanges::GRanges(subs.data[,1], IRanges::IRanges(subs.data[,2], subs.data[,2]+1), rep('*', nrow(subs.data)))
   combined.gr = GenomicRanges::GRanges(seqnames(subs.data.gr), ranges(subs.data.gr), rep('*', nrow(subs.data)))
   elementMetadata(combined.gr) = data.frame(WT.count=WT.count, mut.count=mut.count)
   return(combined.gr)
