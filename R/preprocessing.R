@@ -131,7 +131,7 @@ mut_mut_phasing = function(loci_file, phased_file, bam_file, bai_file, max_dista
     count.data$phasing = NA
     for(h in 1:nrow(count.data)){
       counts = count.data[h,8:11]
-      
+     print(counts) 
       if(counts[2]>0 & counts[3]+counts[4] == 0){
         count.data$phasing[h]="phased"
         #}else if(counts[2]==0 & counts[3]+counts[4] > 0){
