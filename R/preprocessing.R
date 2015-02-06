@@ -42,13 +42,13 @@ split_by_chrom = function(infile, prefix, postfix, outdir, chrom_file) {
 ############################################
 # VCF 2 LOCI
 ############################################
-.parseFai = function(fai_file) {
+parseFai = function(fai_file) {
   fai = read.table(fai_file, header=F, stringsAsFactor=F)
   colnames(fai) = c("chromosome", "length", "offset", "fasta_line_length", "line_blen")
   return(fai)
 }
 
-.parseIgnore = function(ignore_file) {
+parseIgnore = function(ignore_file) {
   ign = read.table(ignore_file, header=F, stringsAsFactor=F)
   colnames(ign) = c("chromosome")
   return(ign)
@@ -264,7 +264,7 @@ mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, 
 ############################################
 # Combine all the steps into a DP input file
 ############################################
-.GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, is.male = F, out.dir = NULL, phase.dir = NULL, SNP.phase.file = NULL, mut.phase.file = NULL){
+GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, is.male = F, out.dir = NULL, phase.dir = NULL, SNP.phase.file = NULL, mut.phase.file = NULL){
   
   subclone.data = read.table(subclone.file,sep="\t",header=T,row.names=1, stringsAsFactors=F)
   #   subclone.data$subclonal.CN = (subclone.data$nMaj1_A + subclone.data$nMin1_A) * subclone.data$frac1_A
@@ -431,12 +431,12 @@ mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, 
   write.table(df, outputfile, sep="\t", row.names=F, quote=F)
 }
 
-.GetCellularity <- function(rho_and_psi_file) {
+GetCellularity <- function(rho_and_psi_file) {
   d = read.table(rho_and_psi_file, header=T, stringsAsFactors=F)
   return(d['FRAC_GENOME','rho'])
 }
 
-.GetWTandMutCount <- function(loci_file, allele_frequencies_file) {
+GetWTandMutCount <- function(loci_file, allele_frequencies_file) {
   not.allowed.chroms = c("GL000191.1","GL000192.1","GL000193.1","GL000194.1","GL000195.1","GL000196.1","GL000197.1","GL000198.1","GL000199.1","GL000200.1","GL000201.1","GL000202.1","GL000203.1","GL000204.1","GL000205.1","GL000206.1","GL000207.1","GL000208.1","GL000209.1","GL000210.1","GL000211.1","GL000212.1","GL000213.1","GL000214.1","GL000215.1","GL000216.1","GL000217.1","GL000218.1","GL000219.1","GL000220.1","GL000221.1","GL000222.1","GL000223.1","GL000224.1","GL000225.1","GL000226.1","GL000227.1","GL000228.1","GL000229.1","GL000230.1","GL000231.1","GL000232.1","GL000233.1","GL000234.1","GL000235.1","GL000236.1","GL000237.1","GL000238.1","GL000239.1","GL000240.1","GL000241.1","GL000242.1","GL000243.1","GL000244.1","GL000245.1","GL000246.1","GL000247.1","GL000248.1","GL000249.1","hs37d5","MT","NC_007605")
   subs.data = read.table(loci_file, sep='\t', header=F, stringsAsFactors=F)
   subs.data = subs.data[!(subs.data[,1] %in% not.allowed.chroms),]
@@ -489,32 +489,32 @@ runGetDirichletProcessInfo = function(loci_file, allele_frequencies_file, cellul
 ##############################################
 # QC
 ##############################################
-.createPng <- function(p, filename, width, height) {
+createPng <- function(p, filename, width, height) {
   png(filename=filename, width=width, height=height)
   print(p)
   dev.off()
 }
 
-.meltFacetPlotData <- function(data, subsamplenames) {
+meltFacetPlotData <- function(data, subsamplenames) {
   d = as.data.frame(data)
   colnames(d) = subsamplenames
   data.m = reshape2::melt(d)
   return(data.m)
 }
 
-.createHistFacetPlot <- function(data, title, xlab, ylab, binwidth) {
+createHistFacetPlot <- function(data, title, xlab, ylab, binwidth) {
   p = ggplot2::ggplot(data) + ggplot2::aes(x=value, y=..count..) + ggplot2::geom_histogram(binwidth=binwidth, colour="black", fill="gray") + ggplot2::facet_grid(variable ~ .)
   p = p + ggplot2::theme_bw(base_size=35) + ggplot2::ggtitle(title) + ggplot2::xlab(xlab) + ggplot2::ylab(ylab)
   return(p)
 }
 
-.createBoxFacetPlot <- function(data, title, xlab, ylab) {
+createBoxFacetPlot <- function(data, title, xlab, ylab) {
   p = ggplot2::ggplot(data) + ggplot2::aes(x=variable, y=value) + ggplot2::geom_boxplot() + ggplot2::facet_grid(subsample ~ .)
   p = p + ggplot2::theme_bw() + ggplot2::ggtitle(title) + ggplot2::xlab(xlab) + ggplot2::ylab(ylab)
   return(p)
 }
 
-.createQCDocument <- function(res, samplename, subsamplenames, outpath, cellularity) {
+createQCDocument <- function(res, samplename, subsamplenames, outpath, cellularity) {
   p = createHistFacetPlot(meltFacetPlotData(res$totalCopyNumber, subsamplenames), paste(samplename, "totalCopyNumber"), "Copynumber", "Count", binwidth=1)
   createPng(p, paste(outpath, samplename, "_totalCopyNumber.png", sep=""), width=1500, height=500*length(subsamplenames))
   
