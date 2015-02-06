@@ -452,17 +452,18 @@ GetWTandMutCount <- function(loci_file, allele_frequencies_file) {
   print(head(alleleFrequencies))
   alleleFrequencies.gr = GenomicRanges::GRanges(alleleFrequencies[,1], IRanges::IRanges(alleleFrequencies[,2], alleleFrequencies[,2]), rep('*', nrow(alleleFrequencies)))
   elementMetadata(alleleFrequencies.gr) = alleleFrequencies[,3:7]
-  print("1")
+
+  nucleotides = c("A","C","G","T")
   ref.indices = match(subs.data[,3],nucleotides)
   alt.indices = match(subs.data[,4],nucleotides)
   print(head(sapply(1:nrow(alleleFrequencies),function(v,a,i){v[i,a[i]+2]},v=alleleFrequencies,a=ref.indices)))
   print(head(sapply(1:nrow(alleleFrequencies),function(v,a,i){v[i,a[i]+2]},v=alleleFrequencies,a=alt.indices)))
   WT.count = as.numeric(sapply(1:nrow(alleleFrequencies),function(v,a,i){v[i,a[i]+2]},v=alleleFrequencies,a=ref.indices))
   mut.count = as.numeric(sapply(1:nrow(alleleFrequencies),function(v,a,i){v[i,a[i]+2]},v=alleleFrequencies,a=alt.indices))
-  print("2")  
+
   combined = data.frame(chr=subs.data[,1],pos=subs.data[,2],WTCount=WT.count, mutCount=mut.count)
   colnames(combined) = c("chr","pos","WT.count","mut.count")
-  print("3")
+
   #   combined.gr = GenomicRanges::GRanges(subs.data[,1], IRanges::IRanges(subs.data[,2], subs.data[,2]+1), rep('*', nrow(subs.data)))
   combined.gr = GenomicRanges::GRanges(seqnames(subs.data.gr), ranges(subs.data.gr), rep('*', nrow(subs.data)))
   elementMetadata(combined.gr) = data.frame(WT.count=WT.count, mut.count=mut.count)
@@ -480,7 +481,6 @@ runGetDirichletProcessInfo = function(loci_file, allele_frequencies_file, cellul
   } else {
     stop("Unknown gender supplied, exit.")
   }
-  nucleotides = c("A","C","G","T")
   info_counts = GetWTandMutCount(loci_file, allele_frequencies_file)
   cellularity = GetCellularity(cellularity_file)
   GetDirichletProcessInfo(output_file, cellularity, info_counts, subclone_file, is.male=isMale, SNP.phase.file=snp_phase_file, mut.phase.file=mut_phase_file)
