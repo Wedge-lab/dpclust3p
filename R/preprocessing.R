@@ -54,20 +54,24 @@ parseIgnore = function(ignore_file) {
   return(ign)
 }
 
-vcf2loci = function(vcf_file, fai_file, ign_file, outfile) {
+vcf2loci = function(vcf_files, fai_file, ign_file, outfile) {
   #fai = parseFai("/lustre/scratch110/sanger/sd11/Documents/GenomeFiles/refs_icgc_pancan/genome.fa.fai")
   #ign = parseIgnore("/lustre/scratch110/sanger/sd11/Documents/GenomeFiles/battenberg_ignore/ignore.txt")
   fai = parseFai(fai_file)
   ign = parseIgnore(ign_file)
   allowed_chroms = which(!(fai$chromosome %in% ign$chromosome))
 
-  vcf.cols = ncol(read.delim(vcf_file, comment.char="#", header=F, stringsAsFactor=F, nrows=1))
-  vcf.cols.default = 10 # vcf file standard contains 10 columns
-  vcf.colClasses = c(NA, NA, "NULL", NA, NA, rep("NULL", 5+(vcf.cols-vcf.cols.default)))
-  vcf.loci = read.delim(vcf_file, comment.char="#", header=F, stringsAsFactor=F, colClasses=vcf.colClasses)
-  colnames(vcf.loci) = c("chromosome", "pos", "ref","alt")
-  vcf.loci.sel = subset(vcf.loci, chromosome %in% fai$chromosome[allowed_chroms])
-  write.table(vcf.loci.sel, col.names=F, quote=F, row.names=F, file=outfile, sep="\t")
+  combined.loci = data.frame()
+  for (vcf_file in vcf_files) {
+    vcf.cols = ncol(read.delim(vcf_file, comment.char="#", header=F, stringsAsFactor=F, nrows=1))
+    vcf.cols.default = 10 # vcf file standard contains 10 columns
+    vcf.colClasses = c(NA, NA, "NULL", NA, NA, rep("NULL", 5+(vcf.cols-vcf.cols.default)))
+    vcf.loci = read.delim(vcf_file, comment.char="#", header=F, stringsAsFactor=F, colClasses=vcf.colClasses)
+    colnames(vcf.loci) = c("chromosome", "pos", "ref","alt")
+    vcf.loci.sel = subset(vcf.loci, chromosome %in% fai$chromosome[allowed_chroms])
+    combined.loci = rbind(combined.loci, vcf.loci.sel)
+  }
+  write.table(combined.loci, col.names=F, quote=F, row.names=F, file=outfile, sep="\t")
 }
 
 ############################################
