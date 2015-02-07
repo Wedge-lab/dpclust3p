@@ -55,12 +55,11 @@ parseIgnore = function(ignore_file) {
 }
 
 vcf2loci = function(vcf_files, fai_file, ign_file, outfile) {
-  #fai = parseFai("/lustre/scratch110/sanger/sd11/Documents/GenomeFiles/refs_icgc_pancan/genome.fa.fai")
-  #ign = parseIgnore("/lustre/scratch110/sanger/sd11/Documents/GenomeFiles/battenberg_ignore/ignore.txt")
   fai = parseFai(fai_file)
   ign = parseIgnore(ign_file)
   allowed_chroms = which(!(fai$chromosome %in% ign$chromosome))
 
+  # Run through each supplied vcf file, collect the loci from each
   combined.loci = data.frame()
   for (vcf_file in vcf_files) {
     vcf.cols = ncol(read.delim(vcf_file, comment.char="#", header=F, stringsAsFactor=F, nrows=1))
@@ -71,6 +70,8 @@ vcf2loci = function(vcf_files, fai_file, ign_file, outfile) {
     vcf.loci.sel = subset(vcf.loci, chromosome %in% fai$chromosome[allowed_chroms])
     combined.loci = rbind(combined.loci, vcf.loci.sel)
   }
+  # Remove duplicate entries
+  combined.loci = unique(combined.loci)
   write.table(combined.loci, col.names=F, quote=F, row.names=F, file=outfile, sep="\t")
 }
 
