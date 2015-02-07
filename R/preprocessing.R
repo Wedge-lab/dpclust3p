@@ -1,4 +1,4 @@
-
+ALLELECOUNTER = "alleleCounter"
 LINKAGEPULL = "Linkage_pull.pl"
 
 #'
@@ -74,6 +74,28 @@ vcf2loci = function(vcf_files, fai_file, ign_file, outfile) {
   combined.loci = unique(combined.loci)
   write.table(combined.loci, col.names=F, quote=F, row.names=F, file=outfile, sep="\t")
 }
+
+############################################
+# Allele counting
+############################################
+
+#'
+#' Count the alleles for specified locations in the loci file.
+#'
+alleleCount = function(locifile, bam, outfile, min_baq=20, min_maq=35) {
+
+   cmd = paste(ALLELECOUNTER,
+               "-b", bam,
+               "-o", outfile,
+               "-l", locifile,
+               "-m", min_baq,
+               "-q", min_maq, sep=" ")
+   system(cmd,wait=T)
+}
+
+
+
+
 
 ############################################
 # MUT 2 MUT phasing
