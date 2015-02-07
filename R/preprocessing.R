@@ -275,15 +275,15 @@ GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, 
   
   info_anno = as.data.frame(cbind(array(NA, c(length(info), 7)))) 
   colnames(info_anno) = c('subclonal.CN','nMaj1','nMin1','frac1','nMaj2','nMin2','frac2')
-  inds = findOverlaps(info, subclone.data.gr)  
-  info_anno[GenomicRanges::queryHits(inds),2:7] = subclone.data[GenomicRanges::subjectHits(inds),][,c("nMaj1_A", "nMin1_A", "frac1_A", "nMaj2_A", "nMin2_A", "frac2_A")]
+  inds = S4Vectors::findOverlaps(info, subclone.data.gr)  
+  info_anno[S4Vectors::queryHits(inds),2:7] = subclone.data[S4Vectors::subjectHits(inds),][,c("nMaj1_A", "nMin1_A", "frac1_A", "nMaj2_A", "nMin2_A", "frac2_A")]
   
-  CN1 = (info_anno[GenomicRanges::queryHits(inds),]$nMaj1 + info_anno[GenomicRanges::queryHits(inds),]$nMin1) * info_anno[GenomicRanges::queryHits(inds),]$frac1
+  CN1 = (info_anno[S4Vectors::queryHits(inds),]$nMaj1 + info_anno[S4Vectors::queryHits(inds),]$nMin1) * info_anno[S4Vectors::queryHits(inds),]$frac1
   # If frac is not one for allele 1 (i.e. not only CN data for allele 1), add the CN contribution of allele 2 as well
-  CN2 = (info_anno[GenomicRanges::queryHits(inds),]$nMaj2 + info_anno[GenomicRanges::queryHits(inds),]$nMin2) * info_anno[GenomicRanges::queryHits(inds),]$frac2 * ifelse(info_anno[GenomicRanges::queryHits(inds),]$frac1 != 1, 1, 0)
+  CN2 = (info_anno[S4Vectors::queryHits(inds),]$nMaj2 + info_anno[S4Vectors::queryHits(inds),]$nMin2) * info_anno[S4Vectors::queryHits(inds),]$frac2 * ifelse(info_anno[S4Vectors::queryHits(inds),]$frac1 != 1, 1, 0)
   CN2[is.na(CN2)] = 0
-  info_anno[GenomicRanges::queryHits(inds),]$subclonal.CN = CN1 + CN2
-  elementMetadata(info) = cbind(elementMetadata(info), info_anno)
+  info_anno[S4Vectors::queryHits(inds),]$subclonal.CN = CN1 + CN2
+  S4Vectors::elementMetadata(info) = cbind(S4Vectors::elementMetadata(info), info_anno)
   
   info$phase="unphased"
   # Code to turn on when haplotype pipeline is fully operational
@@ -293,7 +293,7 @@ GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, 
   phasing.gr = GenomicRanges::GRanges(phasing$Chr, IRanges::IRanges(phasing$Pos1, phasing$Pos1))
   phasing.gr$phasing = phasing$Parental
   inds = findOverlaps(info, phasing.gr)  
-  info$phase[GenomicRanges::queryHits(inds)] = phasing.gr$phasing[subjectHits(inds)]
+  info$phase[S4Vectors::queryHits(inds)] = phasing.gr$phasing[S4Vectors::subjectHits(inds)]
   
   info$phase[is.na(info$phase)]="unphased"
   print("M.C.N.")
