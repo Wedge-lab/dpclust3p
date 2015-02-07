@@ -269,7 +269,7 @@ mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, 
 ############################################
 # Combine all the steps into a DP input file
 ############################################
-GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, is.male = F, out.dir = NULL, phase.dir = NULL, SNP.phase.file = NULL, mut.phase.file = NULL){
+GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, is.male = F, out.dir = NULL, SNP.phase.file = NULL, mut.phase.file = NULL){
   require('GenomicRanges')
  
   subclone.data = read.table(subclone.file,sep="\t",header=T,row.names=1, stringsAsFactors=F)
@@ -292,17 +292,16 @@ GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, 
   elementMetadata(info) = cbind(elementMetadata(info), info_anno)
   
   info$phase="unphased"
-  # Code to turn on when haplotype pipeline is fully operational
-  phasing = read.table(SNP.phase.file, header=T, stringsAsFactors=F) #header=T, skip=1, 
-  print(head(phasing))
-  print(phasing$Pos1[!is.numeric(phasing$Pos1)])
-  phasing.gr = GenomicRanges::GRanges(phasing$Chr, IRanges::IRanges(phasing$Pos1, phasing$Pos1))
-  phasing.gr$phasing = phasing$Parental
-  inds = findOverlaps(info, phasing.gr)  
-  info$phase[queryHits(inds)] = phasing.gr$phasing[subjectHits(inds)]
+  if (!is.null(SNP.phase.file)) {
+    phasing = read.table(SNP.phase.file, header=T, stringsAsFactors=F) #header=T, skip=1, 
+    phasing.gr = GenomicRanges::GRanges(phasing$Chr, IRanges::IRanges(phasing$Pos1, phasing$Pos1))
+    phasing.gr$phasing = phasing$Parental
+    inds = findOverlaps(info, phasing.gr)  
+    info$phase[queryHits(inds)] = phasing.gr$phasing[subjectHits(inds)]
   
-  info$phase[is.na(info$phase)]="unphased"
-  print("M.C.N.")
+    info$phase[is.na(info$phase)]="unphased"
+  }
+  
   if(is.male & "chr" %in% names(info)){
     normal.CN = rep(2,nrow(info))
     normal.CN[info$chr=="X"| info$chr=="Y"] = 1
