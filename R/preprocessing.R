@@ -484,7 +484,7 @@ runGetDirichletProcessInfo = function(loci_file, allele_frequencies_file, cellul
   }
   info_counts = GetWTandMutCount(loci_file, allele_frequencies_file)
   cellularity = GetCellularity(cellularity_file)
-  GetDirichletProcessInfo(output_file, cellularity, info_counts, subclone_file, is.male=isMale, SNP.phase.file=snp_phase_file, mut.phase.file=mut_phase_file)
+  GetDirichletProcessInfo(output_file, cellularity, info_counts, subclone_file, is.male=isMale, SNP.phase.file=SNP.phase.file, mut.phase.file=mut.phase.file)
 }
 
 ##############################################
