@@ -208,28 +208,42 @@ mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, 
     linked.muts = data.frame(matrix(rep(NA, 13), nrow=1))
     colnames(linked.muts) = c("Chr","Pos1","Ref1","Var1","Pos2","Ref2","Var2","AF","AFphased","Num_linked_to_A","Num_linked_to_C","Num_linked_to_G","Num_linked_to_T")
     linked.muts = na.omit(linked.muts)
-  } else if(nrow(read.delim(loci_file, header=T, stringsAsFactors=F, fill=T))==0) {
+  } else if(nrow(read.delim(loci_file, header=F, stringsAsFactors=F, fill=T))==0) {
     linked.muts = data.frame(matrix(rep(NA, 13), nrow=1))
     colnames(linked.muts) = c("Chr","Pos1","Ref1","Var1","Pos2","Ref2","Var2","AF","AFphased","Num_linked_to_A","Num_linked_to_C","Num_linked_to_G","Num_linked_to_T")
     linked.muts = na.omit(linked.muts)
   } else {
     # TODO: is this filtering required when just supplying loci files from a single chromosome?
-    chr.muts = read.delim(loci_file, header=T, stringsAsFactors=F, fill=T)
+    chr.muts = read.delim(loci_file, header=F, stringsAsFactors=F, fill=T)
     names(chr.muts) = c("CHR","POSITION","REF_BASE","MUT_BASE")
     
     # Match phased SNPs and their haplotypes together
     phased = read.delim(phased_file, header=T, stringsAsFactors=F, quote="\"")
-    #220212
-    colnames(phased) = c("SNP", "Chr","Pos", "AF", "AFphased", "AFsegmented")
+    # Compatible with both BB setups that have row.names and those that don't
+    if (ncol(phased) == 6) {
+        colnames(phased) = c("SNP", "Chr","Pos", "AF", "AFphased", "AFsegmented")
+    } else {
+        colnames(phased) = c("Chr","Pos", "AF", "AFphased", "AFsegmented")
+    }
     
     # TODO: check that chromosomes are using the same names between loci and phased files
     phased = phased[phased$Chr %in% chr.muts$CHR,]
     
     hap.info = read.delim(hap_file, sep=" ", header=F, row.names=NULL, stringsAsFactors=F)
-    colnames(hap.info) = c("SNP","dbSNP","pos","ref","mut","ref_count","mut_count")
+    # Compatible with both BB setups that have row.names and those that don't
+    if (ncol(hap.info) == 7) {
+        colnames(hap.info) = c("SNP","dbSNP","pos","ref","mut","ref_count","mut_count")
+    } else {
+        colnames(hap.info) = c("dbSNP","pos","ref","mut","ref_count","mut_count")
+    }
     # get haplotypes that match phased heterozygous SNPs
     hap.info = hap.info[match(phased$Pos,hap.info$pos),]
-    print(sum(hap.info[,6]==1))
+   
+    # Synchronise dfs in case some SNPs are not in hap.info
+    selection = !is.na(hap.info$pos)
+    hap.info = hap.info[selection,]
+    phased = phased[selection,]
+ 
     #220212
     phased$AF[hap.info$ref_count==1] = 1-phased$AF[hap.info$ref_count==1]
     phased$Ref = hap.info$ref
