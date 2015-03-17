@@ -490,7 +490,8 @@ GetWTandMutCount <- function(loci_file, allele_frequencies_file) {
   subs.data.gr = GenomicRanges::GRanges(subs.data[,1], IRanges::IRanges(subs.data[,2], subs.data[,2]), rep('*', nrow(subs.data)))
   elementMetadata(subs.data.gr) = subs.data[,c(3,4)]
   
-  alleleFrequencies = read.table(allele_frequencies_file, sep='\t',header=F, stringsAsFactors=F)
+  #alleleFrequencies = read.table(allele_frequencies_file, sep='\t',header=F, stringsAsFactors=F)
+  alleleFrequencies = read.delim(allele_frequencies_file, sep='\t', header=T, quote=NULL, stringsAsFactors=F)
   alleleFrequencies = alleleFrequencies[order(alleleFrequencies[,1],alleleFrequencies[,2]),]
   print(head(alleleFrequencies))
   alleleFrequencies.gr = GenomicRanges::GRanges(alleleFrequencies[,1], IRanges::IRanges(alleleFrequencies[,2], alleleFrequencies[,2]), rep('*', nrow(alleleFrequencies)))
