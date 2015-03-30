@@ -264,37 +264,73 @@ mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, 
     linked.muts$Parental <- rep(NA, dim(linked.muts)[1])
     if (nrow(linked.muts) > 0) {
       for (i in 1:nrow(linked.muts)) {
-        if (linked.muts$AF[i]>0.5) {
-          
-          if (linked.muts[i,ACGT[linked.muts$Var2[i]]] > 0 & linked.muts[i,ACGT[linked.muts$Ref2[i]]] == 0) {
-            linked.muts$Parental[i] = "MUT_ON_RETAINED"
-          }  else {
-            if (linked.muts[i,ACGT[linked.muts$Var2[i]]] == 0 & linked.muts[i,ACGT[linked.muts$Ref2[i]]] > 0) {
-              linked.muts$Parental[i] = "MUT_ON_DELETED"
-            }
-          }
-        }
-        else {	
-          if (linked.muts[i,ACGT[linked.muts$Var2[i]]] > 0 & linked.muts[i,ACGT[linked.muts$Ref2[i]]] == 0) {
-            linked.muts$Parental[i] = "MUT_ON_DELETED"
-          } else {
-            if (linked.muts[i,ACGT[linked.muts$Var2[i]]] == 0 & linked.muts[i,ACGT[linked.muts$Ref2[i]]] > 0) {
-              linked.muts$Parental[i] = "MUT_ON_RETAINED"
-            }
-          }
-        }
-        
+	
+	# Fetch allele frequency
+	af = linked.muts$AF[i]
+	# Get number of reads covering the ref mutation allele
+	ref_count = hap.info[hap.info$pos==linked.muts$Pos2[i],]$ref_count
+	# Get number of reads covering the alt mutation allele
+	alt_count = hap.info[hap.info$pos==linked.muts$Pos2[i],]$alt_count
+	# Number of reads covering SNP allele A, that also cover mutation alt
+	linked_to_A = linked.muts[i,ACGT[linked.muts$Ref2[i]]]
+	# Number of reads covering SNP allele B, that also cover mutation alt
+	linked_to_B = linked.muts[i,ACGT[linked.muts$Var2[i]]]
+
+	if (af < 0.5 & alt_count==1 & linked_to_A > 0 & linked_to_B == 0) {
+		linked.muts$Parental[i] = "MUT_ON_DELETED"
+	} else if (af < 0.5 & alt_count==1 & linked_to_A == 0 & linked_to_B > 0) {
+		linked.muts$Parental[i] = "MUT_ON_RETAINED"
+	} else if (af > 0.5 & alt_count==1 & linked_to_A > 0 & linked_to_B == 0) {
+		linked.muts$Parental[i] = "MUT_ON_RETAINED"
+	} else if (af > 0.5 & alt_count==1 & linked_to_A == 0 & linked_to_B > 0) {
+		linked.muts$Parental[i] = "MUT_ON_DELETED"
+	} else if (af > 0.5 & ref_count==1 & linked_to_A > 0 & linked_to_B == 0) {
+		linked.muts$Parental[i] = "MUT_ON_DELETED"
+	} else if (af > 0.5 & ref_count==1 & linked_to_A == 0 & linked_to_B > 0) {
+		linked.muts$Parental[i] = "MUT_ON_RETAINED"
+	} else if (af < 0.5 & ref_count==1 & linked_to_A > 0 & linked_to_B == 0) {
+		linked.muts$Parental[i] = "MUT_ON_RETAINED"
+	} else if (af < 0.5 & ref_count==1 & linked_to_A == 0 & linked_to_B > 0) {
+		linked.muts$Parental[i] = "MUT_ON_DELETED"
+	}
+
+
+
+
+
+
+
+        #if (linked.muts$AF[i]>0.5) {
+        #  
+        #  if (linked.muts[i,ACGT[linked.muts$Var2[i]]] > 0 & linked.muts[i,ACGT[linked.muts$Ref2[i]]] == 0) {
+        #    linked.muts$Parental[i] = "MUT_ON_RETAINED"
+        #  }  else {
+        #    if (linked.muts[i,ACGT[linked.muts$Var2[i]]] == 0 & linked.muts[i,ACGT[linked.muts$Ref2[i]]] > 0) {
+        #      linked.muts$Parental[i] = "MUT_ON_DELETED"
+        #    }
+        #  }
+        #}
+        #else {	
+        #  if (linked.muts[i,ACGT[linked.muts$Var2[i]]] > 0 & linked.muts[i,ACGT[linked.muts$Ref2[i]]] == 0) {
+        #    linked.muts$Parental[i] = "MUT_ON_DELETED"
+        #  } else {
+        #    if (linked.muts[i,ACGT[linked.muts$Var2[i]]] == 0 & linked.muts[i,ACGT[linked.muts$Ref2[i]]] > 0) {
+        #      linked.muts$Parental[i] = "MUT_ON_RETAINED"
+        #    }
+        #  }
+        #}
+        # 
         #220212
-        if (linked.muts$AFphased[i] < 0.5) {
-          print(paste(linked.muts$Pos2[i],phased$AFphased[phased$Pos == linked.muts$Pos2[i]],sep=": "))
-          if (!is.na(linked.muts$Parental[i]) & linked.muts$Parental[i] == "MUT_ON_DELETED") {
-            linked.muts$Parental[i] = "MUT_ON_RETAINED"
-          } else {
-            if (!is.na(linked.muts$Parental[i]) & linked.muts$Parental[i] == "MUT_ON_RETAINED") {
-              linked.muts$Parental[i] = "MUT_ON_DELETED"
-            }
-          }
-        }
+        #if (linked.muts$AFphased[i] < 0.5) {
+        #  print(paste(linked.muts$Pos2[i],phased$AFphased[phased$Pos == linked.muts$Pos2[i]],sep=": "))
+        #  if (!is.na(linked.muts$Parental[i]) & linked.muts$Parental[i] == "MUT_ON_DELETED") {
+        #    linked.muts$Parental[i] = "MUT_ON_RETAINED"
+        #  } else {
+        #    if (!is.na(linked.muts$Parental[i]) & linked.muts$Parental[i] == "MUT_ON_RETAINED") {
+        #      linked.muts$Parental[i] = "MUT_ON_DELETED"
+        #    }
+        #  }
+        #}
       }
     }
   }
