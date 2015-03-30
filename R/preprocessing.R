@@ -245,7 +245,7 @@ mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, 
     phased = phased[selection,]
  
     #220212
-    phased$AF[hap.info$ref_count==1] = 1-phased$AF[hap.info$ref_count==1]
+    #phased$AF[hap.info$ref_count==1] = 1-phased$AF[hap.info$ref_count==1]
     phased$Ref = hap.info$ref
     phased$Var = hap.info$mut
     
