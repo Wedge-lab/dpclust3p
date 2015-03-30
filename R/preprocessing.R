@@ -270,7 +270,7 @@ mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, 
 	# Get number of reads covering the ref mutation allele
 	ref_count = hap.info[hap.info$pos==linked.muts$Pos2[i],]$ref_count
 	# Get number of reads covering the alt mutation allele
-	alt_count = hap.info[hap.info$pos==linked.muts$Pos2[i],]$alt_count
+	alt_count = hap.info[hap.info$pos==linked.muts$Pos2[i],]$mut_count
 	# Number of reads covering SNP allele A, that also cover mutation alt
 	linked_to_A = linked.muts[i,ACGT[linked.muts$Ref2[i]]]
 	# Number of reads covering SNP allele B, that also cover mutation alt
