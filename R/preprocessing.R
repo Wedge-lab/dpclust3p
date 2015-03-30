@@ -275,6 +275,16 @@ mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, 
 	linked_to_A = linked.muts[i,ACGT[linked.muts$Ref2[i]]]
 	# Number of reads covering SNP allele B, that also cover mutation alt
 	linked_to_B = linked.muts[i,ACGT[linked.muts$Var2[i]]]
+	print("RAW")
+	print(af)
+	print(alt_count)
+	print(linked_to_A)
+	print(linked_to_B)
+	print("COMBINE")
+	print(af < 0.5 & alt_count==1)
+	print(linked_to_A > 0 & linked_to_B == 0)
+	print((af < 0.5) & (alt_count==1) & (linked_to_A > 0) & (linked_to_B == 0))
+	
 
 	if (af < 0.5 & alt_count==1 & linked_to_A > 0 & linked_to_B == 0) {
 		linked.muts$Parental[i] = "MUT_ON_DELETED"
