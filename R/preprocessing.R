@@ -344,7 +344,7 @@ mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, 
 GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, is.male = F, out.dir = NULL, SNP.phase.file = NULL, mut.phase.file = NULL){
   require('GenomicRanges')
  
-  subclone.data = read.table(subclone.file,sep="\t",header=T,row.names=1, stringsAsFactors=F)
+  subclone.data = read.table(subclone.file,sep="\t",header=T,stringsAsFactors=F)
   #   subclone.data$subclonal.CN = (subclone.data$nMaj1_A + subclone.data$nMin1_A) * subclone.data$frac1_A
   subclone.data.gr = GenomicRanges::GRanges(subclone.data$chr, IRanges::IRanges(subclone.data$startpos, subclone.data$endpos), rep('*', nrow(subclone.data)))
   elementMetadata(subclone.data.gr) = subclone.data[,3:ncol(subclone.data)]
