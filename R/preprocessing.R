@@ -93,9 +93,50 @@ alleleCount = function(locifile, bam, outfile, min_baq=20, min_maq=35) {
    system(cmd,wait=T)
 }
 
+#' Dump allele counts stored in the sample columns of the VCF file. Output will go into a file
+#' starting with tumour_name and ending with _alleleFrequencies.txt. It will be a fully formatted
+#' allele counts file as returned by alleleCounter.
+dumpAlleleCounts.Sanger = function(vcf_infile, tumour_name, normal_name=NA, refence_genome="hg19") {
+  # Helper function for writing the output  
+  write.output = function(output, output_file) {
+    write.table(output, file=output_file, col.names=T, quote=F, row.names=F, sep="\t")
+  }
+  
+  # Read in the vcf and dump the tumour counts in the right format
+  v = readVcf(vcf_infile, refence_genome)
+  tumour = getCountsTumour(v)
+  tumour = formatOutput(tumour, v)
+  write.output(tumour, paste(tumour_name, "_alleleFrequencies.txt", sep=""))
+  
+  # Optionally dump the normal counts in the right format
+  if (!is.na(normal_name) {
+    normal = getCountsNormal(v)
+    normal = formatOutput(normal, v)
+    write.output(normal, paste(normal_name, "_alleleFrequencies.txt", sep=""))
+  }
+}
 
+#' Format a 4 column counts table into the alleleCounter format
+formatOutput = function(counts_table, v) {
+  output = data.frame(as.character(seqnames(v)), start(ranges(v)), counts_table, rowSums(counts_table))
+  colnames(output) = c("#CHR","POS","Count_A","Count_C","Count_G","Count_T","Good_depth")
+  return(output)
+}
 
+#' Returns an allele counts table for the normal sample
+getCountsNormal = function(v) {
+  return(getAlleleCounts.Sanger(v, 1))
+}
 
+#' Returns an allele counts table for the tumour sample
+getCountsTumour = function(v) {
+  return(getAlleleCounts.Sanger(v, 2))
+}
+
+#' Helper function that dumps the allele counts from a Sanger pipeline VCF file
+getAlleleCounts.Sanger = function(v, sample_col) {
+  return(cbind(geno(v)$FAZ[,sample_col]+geno(v)$RAZ[,sample_col], geno(v)$FCZ[,sample_col]+geno(v)$RCZ[,sample_col], geno(v)$FGZ[,sample_col]+geno(v)$RGZ[,sample_col], geno(v)$FTZ[,sample_col]+geno(v)$RTZ[,sample_col]))
+}
 
 ############################################
 # MUT 2 MUT phasing
