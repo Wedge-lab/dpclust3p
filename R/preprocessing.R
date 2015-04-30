@@ -109,7 +109,7 @@ dumpCounts.Sanger = function(vcf_infile, tumour_outfile, normal_outfile=NA, refe
   write.output(tumour, tumour_outfile)
   
   # Optionally dump the normal counts in the right format
-  if (!is.na(normal_name)) {
+  if (!is.na(normal_outfile)) {
     normal = getCountsNormal(v)
     normal = formatOutput(normal, v)
     write.output(normal, normal_outfile)
