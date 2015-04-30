@@ -109,7 +109,7 @@ dumpAlleleCounts.Sanger = function(vcf_infile, tumour_name, normal_name=NA, refe
   write.output(tumour, paste(tumour_name, "_alleleFrequencies.txt", sep=""))
   
   # Optionally dump the normal counts in the right format
-  if (!is.na(normal_name) {
+  if (!is.na(normal_name)) {
     normal = getCountsNormal(v)
     normal = formatOutput(normal, v)
     write.output(normal, paste(normal_name, "_alleleFrequencies.txt", sep=""))
