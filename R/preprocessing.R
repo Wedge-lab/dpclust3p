@@ -94,9 +94,9 @@ alleleCount = function(locifile, bam, outfile, min_baq=20, min_maq=35) {
 }
 
 #' Dump allele counts stored in the sample columns of the VCF file. Output will go into a file
-#' starting with tumour_name and ending with _alleleFrequencies.txt. It will be a fully formatted
+#' supplied as tumour_outfile and optionally normal_outfile. It will be a fully formatted
 #' allele counts file as returned by alleleCounter.
-dumpAlleleCounts.Sanger = function(vcf_infile, tumour_name, normal_name=NA, refence_genome="hg19") {
+dumpCounts.Sanger = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19") {
   # Helper function for writing the output  
   write.output = function(output, output_file) {
     write.table(output, file=output_file, col.names=T, quote=F, row.names=F, sep="\t")
@@ -106,13 +106,13 @@ dumpAlleleCounts.Sanger = function(vcf_infile, tumour_name, normal_name=NA, refe
   v = readVcf(vcf_infile, refence_genome)
   tumour = getCountsTumour(v)
   tumour = formatOutput(tumour, v)
-  write.output(tumour, paste(tumour_name, "_alleleFrequencies.txt", sep=""))
+  write.output(tumour, tumour_outfile)
   
   # Optionally dump the normal counts in the right format
   if (!is.na(normal_name)) {
     normal = getCountsNormal(v)
     normal = formatOutput(normal, v)
-    write.output(normal, paste(normal_name, "_alleleFrequencies.txt", sep=""))
+    write.output(normal, normal_outfile)
   }
 }
 
