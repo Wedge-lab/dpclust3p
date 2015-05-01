@@ -577,9 +577,8 @@ GetWTandMutCount <- function(loci_file, allele_frequencies_file) {
   nucleotides = c("A","C","G","T")
   ref.indices = match(subs.data[,3],nucleotides)
   alt.indices = match(subs.data[,4],nucleotides)
-  print(head(sapply(1:nrow(alleleFrequencies),function(v,a,i){v[i,a[i]+2]},v=alleleFrequencies,a=ref.indices)))
-  WT.count = as.numeric(sapply(1:nrow(alleleFrequencies),function(v,a,i){v[i,a[i]+2]},v=alleleFrequencies,a=ref.indices))
-  mut.count = as.numeric(sapply(1:nrow(alleleFrequencies),function(v,a,i){v[i,a[i]+2]},v=alleleFrequencies,a=alt.indices))
+  WT.count = as.numeric(unlist(sapply(1:nrow(alleleFrequencies),function(v,a,i){v[i,a[i]+2]},v=alleleFrequencies,a=ref.indices)))
+  mut.count = as.numeric(unlist(sapply(1:nrow(alleleFrequencies),function(v,a,i){v[i,a[i]+2]},v=alleleFrequencies,a=alt.indices)))
 
   combined = data.frame(chr=subs.data[,1],pos=subs.data[,2],WTCount=WT.count, mutCount=mut.count)
   colnames(combined) = c("chr","pos","WT.count","mut.count")
