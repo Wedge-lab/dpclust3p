@@ -405,7 +405,7 @@ GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, 
   elementMetadata(info) = cbind(elementMetadata(info), info_anno)
   
   info$phase="unphased"
-  if (!is.null(SNP.phase.file)) {
+  if (!is.null(SNP.phase.file) & SNP.phase.file!="NA") {
     phasing = read.table(SNP.phase.file, header=T, stringsAsFactors=F) #header=T, skip=1, 
     phasing.gr = GenomicRanges::GRanges(phasing$Chr, IRanges::IRanges(phasing$Pos1, phasing$Pos1))
     phasing.gr$phasing = phasing$Parental
@@ -577,6 +577,7 @@ GetWTandMutCount <- function(loci_file, allele_frequencies_file) {
   nucleotides = c("A","C","G","T")
   ref.indices = match(subs.data[,3],nucleotides)
   alt.indices = match(subs.data[,4],nucleotides)
+  print(head(sapply(1:nrow(alleleFrequencies),function(v,a,i){v[i,a[i]+2]},v=alleleFrequencies,a=ref.indices)))
   WT.count = as.numeric(sapply(1:nrow(alleleFrequencies),function(v,a,i){v[i,a[i]+2]},v=alleleFrequencies,a=ref.indices))
   mut.count = as.numeric(sapply(1:nrow(alleleFrequencies),function(v,a,i){v[i,a[i]+2]},v=alleleFrequencies,a=alt.indices))
 
