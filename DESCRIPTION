@@ -10,3 +10,8 @@ LazyLoad: yes
 Description: Package that takes various inputs, phases mutations against other mutations and copynumber, 
     transforms allele frequencies into an estimate of fraction of cells (CCF) and generates a number of 
     QC figures to assess the data quality.
+Depends: 
+    GenomicRanges,
+    VariantAnnotation,
+    ggplot2,
+    reshape2
