@@ -1,3 +1,5 @@
+#' THIS FUNCTION IS DEPRECATED - SHOULD BE MERGED WITH THE ONE IN DPCLUST
+#' 
 #' load.data
 #'
 #' Load data files for a specific set of samples belonging to the same individual/experiment.
@@ -16,7 +18,7 @@
 #' @return A named list of matrices and vectors with the following items: chromosome, position, WTCount, mutCount, totalCopyNumber, copyNumberAdjustment, non.deleted.muts, kappa, mutation.copy.number, subclonal.fraction, removed_indices, chromosome.not.filtered, mut.position.not.filtered
 #' @author Stefan Dentro
 load.data <- function(datpath, samplename, list_of_data_files, cellularity, Chromosome, position, WT.count, mut.count, subclonal.CN, no.chrs.bearing.mut, mutation.copy.number, subclonal.fraction, data_file_suffix) {
-
+  warning("The load.data function is deprecated and should be merged with the one in DPCLUST")
   data=list()
   for(s in 1:length(list_of_data_files)){
     data[[s]] = read.table(paste(datpath,samplename,list_of_data_files[s],data_file_suffix,sep=""),header=T,sep="\t",stringsAsFactors=F)
