@@ -383,7 +383,6 @@ mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, 
 # Combine all the steps into a DP input file
 ############################################
 GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, is.male = F, out.dir = NULL, SNP.phase.file = NULL, mut.phase.file = NULL){
-  require('GenomicRanges')
  
   subclone.data = read.table(subclone.file,sep="\t",header=T,stringsAsFactors=F)
   #   subclone.data$subclonal.CN = (subclone.data$nMaj1_A + subclone.data$nMin1_A) * subclone.data$frac1_A
@@ -402,7 +401,7 @@ GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, 
   CN2 = (info_anno[queryHits(inds),]$nMaj2 + info_anno[queryHits(inds),]$nMin2) * info_anno[queryHits(inds),]$frac2 * ifelse(info_anno[queryHits(inds),]$frac1 != 1, 1, 0)
   CN2[is.na(CN2)] = 0
   info_anno[queryHits(inds),]$subclonal.CN = CN1 + CN2
-  elementMetadata(info) = cbind(elementMetadata(info), info_anno)
+  elementMetadata(info) = cbind(as.data.frame(elementMetadata(info)), info_anno)
   
   info$phase="unphased"
   if (!is.null(SNP.phase.file) & SNP.phase.file!="NA") {
@@ -534,18 +533,12 @@ GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, 
   }
   
   # convert GenomicRanges object to df
-  df = data.frame(chr=seqnames(info),
+  df = data.frame(chr=as.data.frame(seqnames(info)),
                   start=start(info)-1,
                   end=end(info))
-  #   df = data.frame(chr=seqnames(info),
-  #                 pos=start(info))
-  df = cbind(df, elementMetadata(info))
-  
-  #   out.file = paste(samplename,"_allDirichletProcessInfo.txt",sep="")
-  # 	if(!is.null(out.dir)){
-  # 		out.file = paste(out.dir,'/',out.file,sep="")
-  # 	}
-  # 	write.table(df, out.file, sep="\t", row.names=F, quote=F)
+  df = cbind(df, as.data.frame(elementMetadata(info)))
+  colnames(df)[1] = "chr"
+  print(head(df))
   write.table(df, outputfile, sep="\t", row.names=F, quote=F)
 }
 
@@ -604,6 +597,58 @@ runGetDirichletProcessInfo = function(loci_file, allele_frequencies_file, cellul
   cellularity = GetCellularity(cellularity_file)
   GetDirichletProcessInfo(output_file, cellularity, info_counts, subclone_file, is.male=isMale, SNP.phase.file=SNP.phase.file, mut.phase.file=mut.phase.file)
 }
+
+##############################################
+# dpIn to VCF
+##############################################
+#' Transform a dirichlet input file into a VCF with the same info. It filters out mutations in areas that are not contained in the supplied genome index (fai file) or are contained in the ignore file (ign file)
+#' It takes the DP input file created by runGetDirichletProcessInfo and combines the columns with the vcf file supplied. Finally it gzips and indexes the file
+#' @param vcf_infile Filename of the VCF file to use as a base
+#' @param dpIn_file Filename of a DP input file
+#' @param vcf_outfile Filename of the output file
+#' @param fai_file Path to a reference genome index containing chromosome names
+#' @param ign_file Path to a file containing contigs to ignore
+#' @param genome Specify the reference genome for reading in the VCF
+#' @author Stefan Dentro
+dpIn2vcf = function(vcf_infile, dpIn_file, vcf_outfile, fai_file, ign_file, genome="hg19") {
+  vcf = readVcf(vcf_infile, genome=genome)
+  
+  # Remove muts on chroms not to look at
+  fai = parseFai(fai_file)
+  ign = parseIgnore(ign_file)
+  allowed_chroms = which(!(fai$chromosome %in% ign$chromosome))
+  vcf = vcf[as.vector(seqnames(vcf)) %in% allowed_chroms,]
+  
+  # Read in the to be annotated data
+  dat = read.table(dpIn_file, header=T, stringsAsFactors=F)
+
+  # Annotate the columns into the VCF object  
+  vcf = addVcfInfoCol(vcf, dat$WT.count, 1, "Integer", "Number of reads carrying the wild type allele", "WC")
+  vcf = addVcfInfoCol(vcf, dat$mut.count, 1, "Integer", "Number of reads carrying the mutant allele", "MC")
+  vcf = addVcfInfoCol(vcf, dat$subclonal.CN, 1, "Float", "Total subclonal copynumber", "TSC")
+  vcf = addVcfInfoCol(vcf, dat$nMaj1, 1, "Float", "Copynumber of major allele 1", "NMA1")
+  vcf = addVcfInfoCol(vcf, dat$nMin1, 1, "Float", "Copynumber of minor allele 1", "NMI1")
+  vcf = addVcfInfoCol(vcf, dat$frac1, 1, "Float", "Fraction of tumour cells containing copy number state 1", "FR1")
+  vcf = addVcfInfoCol(vcf, dat$nMaj2, 1, "Float", "Copynumber of major allele 2", "NMA2")
+  vcf = addVcfInfoCol(vcf, dat$nMin2, 1, "Float", "Copynumber of minor allele 2", "NMI2")
+  vcf = addVcfInfoCol(vcf, dat$frac2, 1, "Float", "Fraction of tumour cells containing copy number state 2", "FR2")
+  vcf = addVcfInfoCol(vcf, dat$phase, 1, "String", "Phase relation mutation and copynumber", "PHS")
+  vcf = addVcfInfoCol(vcf, dat$mutation.copy.number, 1, "Float", "Mutation copy number", "MCN")
+  vcf = addVcfInfoCol(vcf, dat$subclonal.fraction, 1, "Float", "Fraction of tumour cells carying this mutation", "CCF")
+  vcf = addVcfInfoCol(vcf, dat$no.chrs.bearing.mut, 1, "Float", "Number of chromosomes bearing the mutation", "NCBM")
+  
+  # Write the output, gzip and index it
+  writeVcf(vcf, file=vcf_outfile, index=T)
+}
+
+#' Convenience function that annotates a column into the supplied VCF object
+addVcfInfoCol = function(vcf, data, number, type, description, abbreviation) {
+  i = header(vcf)@header$INFO
+  exptData(vcf)$header@header$INFO <- rbind(i, DataFrame(Number=number, Type=type, Description=description, row.names=abbreviation))
+  info(vcf)[,abbreviation] <- as(data, "CharacterList")
+  return(vcf)
+}
+
 
 ##############################################
 # QC
