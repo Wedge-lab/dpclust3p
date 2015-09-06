@@ -678,6 +678,7 @@ addVcfInfoCol = function(vcf, data, number, type, description, abbreviation) {
 #' @param outfile, A String with the full path to where the output should be written
 #' @author Tom Mitchell
 collate_bb_subclones = function(samplename, bb_subclones_file, is_male, outfile) {
+  allsegs = NULL
   cndata = read.table(bb_subclones_file, header=T, stringsAsFactors=F)
   cndata = cbind(samplename, cndata)
   # Remove the X chromosome when sample is male as Battenberg cannot infer copy number there
@@ -701,12 +702,11 @@ collate_bb_subclones = function(samplename, bb_subclones_file, is_male, outfile)
   ploidy = round(sum(cndataweighted)/2)*2
   
   # Collating logical arguments for LOH, Amp, HD etc
-  allsegsi = data.frame(cndata[,1:4], cndata[,9:15], ploidy)
-  names(allsegsi) = c("Tumour_Name","chr", "startpos",
+  allsegs = data.frame(cndata[,1:4], cndata[,9:15], ploidy)
+  names(allsegs) = c("Tumour_Name","chr", "startpos",
                        "endpos", "nMaj1_A", "nMin1_A",
                        "frac1_A", "nMaj2_A", "nMin2_A", "frac2_A",
                        "SDfrac_A", "tumour_ploidy")
-  allsegs = rbind(allsegs, allsegsi)
   
   # Now classify all segments into a category
   tot = dim(allsegs)[1]
