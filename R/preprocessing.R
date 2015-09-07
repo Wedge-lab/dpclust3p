@@ -826,32 +826,6 @@ collate_bb_subclones = function(samplename, bb_subclones_file, is_male, outfile)
   write.table(allsegsa, file=outfile, sep="\t", quote=F, row.names=F)
 }
 
-# #' Takes a collated BB subclones file and extends the CN categories
-# extend_bb_cn_categories = function(infile, outfile) {
-#   # Check that this is collated subclones file
-#   
-#   #source("~/repo/dpclust3p/R/preprocessing.R")
-#   #collate_bb_subclones("PD7422a", "subclones_original/PD7422a_subclones.txt", F, "subclones_collated/PD7422a_subclones_collated.txt")
-#   dat = read.table("subclones_collated/PD7422a_subclones_collated.txt", header=T, stringsAsFactors=F)
-#   
-#   dat$category = NA
-#   size_categories = c("3"=10^3, "4"=10^4, "5"=10^5, "6"=10^6, "7"=10^7, "8"=10^8, "9"=10^9, "10"=10^10)
-#   for (i in 1:nrow(dat)) {
-#     seg_len = dat$endpos[i] - dat$startpos[i]
-#     
-#     # Take the first category that is larger than this segment
-#     cat_index = which(!(size_categories < seg_len))[1]
-#     
-#     # Double check that this is the same segment
-#     if (which(size_categories > seg_len)[1] == cat_index) {
-#       dat$category[i] = paste(dat$CNA[i], "_", names(cat_index), sep="")
-#     } else {
-#       print("Not enough categories")
-#     }
-#   }
-#   write.table(dat, file=outfile, sep="\t", row.names=F, quote=F)
-# }
-
 #' This function extends existing categories by a list of sizes
 #' @param infile string that points to a collated Battenberg subclones file
 #' @param outfile string where the output will be written.
