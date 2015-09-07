@@ -853,6 +853,9 @@ collate_bb_subclones = function(samplename, bb_subclones_file, is_male, outfile)
 # }
 
 #' This function extends existing categories by a list of sizes
+#' @param infile string that points to a collated Battenberg subclones file
+#' @param outfile string where the output will be written.
+#' @size_categories named vector with size options to consider for each CNA category
 extend_bb_cn_categories = function(infile, outfile, size_categories=c("3"=10^3, "4"=10^4, "5"=10^5, "6"=10^6, "7"=10^7, "8"=10^8, "9"=10^9, "10"=10^10)) {
   dat = read.table(infile, header=T, stringsAsFactors=F)
   
@@ -868,20 +871,21 @@ extend_bb_cn_categories = function(infile, outfile, size_categories=c("3"=10^3, 
 }
 
 #' Count how often each of the categories is present in this sample
+#' @param infile string pointing to a collated Battenberg subclones file with extended CNA categories
+#' @param outfile string pointing to where the catalog should be written
+#' @param size_categories named vector with the size options to consider. This should be the same vector given to extend_bb_cn_categories
 get_bb_cn_catalog = function(infile, outfile, size_categories=c("3"=10^3, "4"=10^4, "5"=10^5, "6"=10^6, "7"=10^7, "8"=10^8, "9"=10^9, "10"=10^10)) {
   dat = read.table(infile, header=T, stringsAsFactors=F)
-  
+  # Match the CN types with the size categories to create all catalog entries
   CN_types = c("NoCNV", "cAmp", "cGain", "cLOH", "cLoss", "sAmp", "sGain", "sLOH", "sLoss")
-  CN_classes = c()
-  for (i in 1:length(size_categories)) {
-    CN_classes = c(CN_classes, paste(CN_types, names(size_categories)[i], sep="_"))
-  }
-  
-  catalog = data.frame()
-  for (category in CN_classes) {
-    catalog_entry = data.frame(category=category, count=sum(dat$category==category))
-    catalog = rbind(catalog, catalog_entry)
-  }
+  CN_classes = sapply(1:length(size_categories), 
+                      function(i, CN_classes, size_categories) { paste(CN_types, names(size_categories)[i], sep="_") }, 
+                      CN_classes=CN_classes, size_categories=size_categories)
+  # Count how often each category is available
+  catalog = do.call(rbind, lapply(1:length(CN_classes), 
+                                  function(i, CN_classes, dat) { data.frame(category=CN_classes[i], count=sum(dat$category==CN_classes[i])) }, 
+                                  CN_classes=CN_classes, dat=dat))
+
   write.table(catalog, file=outfile, quote=F, sep="\t", row.names=F)
 }
 
