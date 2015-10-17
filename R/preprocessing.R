@@ -1,9 +1,14 @@
 ALLELECOUNTER = "alleleCounter"
 LINKAGEPULL = "Linkage_pull.pl"
 
-#'
-#' Concatenate a series of files specified in a file of file names.
-#'
+#' Convenience function to concatenate a series of files specified in a file of file names.
+#' This function assumes all files have the same layout.
+#' @param fofn A file of file names to be concatenated
+#' @param inputdir Full path to where the input files are stored
+#' @param outfile Full path to where the output should be written
+#' @param haveHeader Boolean that specifies whether the input files have a header
+#' @author sd11
+#' @export
 concat_files = function(fofn, inputdir, outfile, haveHeader) {
   
   inputdir = paste(inputdir,"/", sep="")
@@ -22,9 +27,17 @@ concat_files = function(fofn, inputdir, outfile, haveHeader) {
   write.table(output, file=outfile, col.names=haveHeader, row.names=F, sep="\t", quote=F)
 }
 
-#'
-#' Split an input file per chromosome
-#'
+
+#' Convenience function to split an input file per chromosome. All it requires is that
+#' the infile has as first column chromosome specification. The output files will be named
+#' outdir/prefixCHROMNUMBERpostfix
+#' @param infile The file to be split
+#' @param prefix Prefix of the output file
+#' @param postfix Postfix of the output file
+#' @param outdir Directory where the output files are to be written
+#' @param chrom_file A simple list of chromosomes to be considered
+#' @author sd11
+#' @export
 split_by_chrom = function(infile, prefix, postfix, outdir, chrom_file) {
   outdir = paste(outdir, "/", sep="")
   
@@ -42,23 +55,42 @@ split_by_chrom = function(infile, prefix, postfix, outdir, chrom_file) {
 ############################################
 # VCF 2 LOCI
 ############################################
+#' Convenience function that parses a reference genome index as generated
+#' by samtools index
+#' @param fai_file The index
+#' @return A data frame with columns "chromosome", "length", "offset", "fasta_line_length", "line_blen"
+#' @author sd11
+#' @export
 parseFai = function(fai_file) {
   fai = read.table(fai_file, header=F, stringsAsFactor=F)
   colnames(fai) = c("chromosome", "length", "offset", "fasta_line_length", "line_blen")
   return(fai)
 }
 
+#' Convenience function that parses an ignore file. This file
+#' is expected to have a single column with just chromosome names
+#' @param ignore_file The file specifying to be ignored chromosomes
+#' @return A data frame with a single column named "chromosome"
+#' @author sd11
+#' @export
 parseIgnore = function(ignore_file) {
   ign = read.table(ignore_file, header=F, stringsAsFactor=F)
   colnames(ign) = c("chromosome")
   return(ign)
 }
 
+#' Function that dumps the loci of snvs from a series of vcf files into a single loci file
+#' @param vcf_files A vector of vcf files to be considered
+#' @param fai_file Reference genome index
+#' @param ign_file A file with chromosomes to be excluded from consideration
+#' @param outfile Where to store the output
+#' @author sd11
+#' @export
 vcf2loci = function(vcf_files, fai_file, ign_file, outfile) {
   fai = parseFai(fai_file)
   ign = parseIgnore(ign_file)
   allowed_chroms = which(!(fai$chromosome %in% ign$chromosome))
-
+  
   # Run through each supplied vcf file, collect the loci from each
   combined.loci = data.frame()
   for (vcf_file in vcf_files) {
@@ -78,24 +110,29 @@ vcf2loci = function(vcf_files, fai_file, ign_file, outfile) {
 ############################################
 # Allele counting
 ############################################
-
-#'
-#' Count the alleles for specified locations in the loci file.
-#'
+#' Count the alleles for specified locations in the loci file. Expects alleleCount binary in $PATH
+#' @param locifile A file with at least chromsome and position columns of the locations to be counted
+#' @param bam A bam file
+#' @param outfile Where to store the output
+#' @param min_baq The minimum base quality required for a read to be counted
+#' @param min_maq The minimum mapping quality required for a read to be counted
+#' @author sd11
+#' @export
 alleleCount = function(locifile, bam, outfile, min_baq=20, min_maq=35) {
-
-   cmd = paste(ALLELECOUNTER,
-               "-b", bam,
-               "-o", outfile,
-               "-l", locifile,
-               "-m", min_baq,
-               "-q", min_maq, sep=" ")
-   system(cmd,wait=T)
+  cmd = paste(ALLELECOUNTER,
+              "-b", bam,
+              "-o", outfile,
+              "-l", locifile,
+              "-m", min_baq,
+              "-q", min_maq, sep=" ")
+  system(cmd, wait=T)
 }
 
+#' TODO: still used?
 #' Dump allele counts stored in the sample columns of the VCF file. Output will go into a file
 #' supplied as tumour_outfile and optionally normal_outfile. It will be a fully formatted
 #' allele counts file as returned by alleleCounter.
+#' @noRd
 dumpCounts.Sanger = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19") {
   # Helper function for writing the output  
   write.output = function(output, output_file) {
@@ -117,6 +154,7 @@ dumpCounts.Sanger = function(vcf_infile, tumour_outfile, normal_outfile=NA, refe
 }
 
 #' Format a 4 column counts table into the alleleCounter format
+#' @noRd
 formatOutput = function(counts_table, v) {
   output = data.frame(as.character(seqnames(v)), start(ranges(v)), counts_table, rowSums(counts_table))
   colnames(output) = c("#CHR","POS","Count_A","Count_C","Count_G","Count_T","Good_depth")
@@ -124,16 +162,36 @@ formatOutput = function(counts_table, v) {
 }
 
 #' Returns an allele counts table for the normal sample
-getCountsNormal = function(v) {
+#' @param v The vcf file
+#' @param centre The sequencing centre of which pipeline the vcf file originates
+#' @author sd11
+#' @export
+getCountsNormal = function(v, centre="sanger") {
+  if (centre!="sanger") {
+    warning("Other centres beyond the Sanger not yet supported")
+    q(save="no", status=1)
+  }
   return(getAlleleCounts.Sanger(v, 1))
 }
 
 #' Returns an allele counts table for the tumour sample
-getCountsTumour = function(v) {
+#' @param v The vcf file
+#' @param centre The sequencing centre of which pipeline the vcf file originates
+#' @author sd11
+#' @export
+getCountsTumour = function(v, centre="sanger") {
+  if (centre!="sanger") {
+    warning("Other centres beyond the Sanger not yet supported")
+    q(save="no", status=1)
+  }
   return(getAlleleCounts.Sanger(v, 2))
 }
 
 #' Helper function that dumps the allele counts from a Sanger pipeline VCF file
+#' @param v The vcf file
+#' @param sample_col The column in which the counts are. If it's the first sample mentioned in the vcf this would be sample_col 1
+#' @author sd11
+#' @export
 getAlleleCounts.Sanger = function(v, sample_col) {
   return(cbind(geno(v)$FAZ[,sample_col]+geno(v)$RAZ[,sample_col], geno(v)$FCZ[,sample_col]+geno(v)$RCZ[,sample_col], geno(v)$FGZ[,sample_col]+geno(v)$RGZ[,sample_col], geno(v)$FTZ[,sample_col]+geno(v)$RTZ[,sample_col]))
 }
@@ -141,6 +199,8 @@ getAlleleCounts.Sanger = function(v, sample_col) {
 ############################################
 # MUT 2 MUT phasing
 ############################################
+#' Run linkage pull on SNVs vs SNVs
+#' @noRd
 run_linkage_pull_mut = function(output, loci_file, bam_file, bai_file) {
   #
   # Runs Linkage_pull 
@@ -158,7 +218,14 @@ run_linkage_pull_mut = function(output, loci_file, bam_file, bai_file) {
   return(count.data)
 }
 
-
+#' Run mutation to mutation phasing. This function requires the Linkage_pull.pl script in $PATH.
+#' @param loci_file A list of loci
+#' @param phased_file File to save the output
+#' @param bam_file Full path to the bam file
+#' @param bai_file Full path to the bai file
+#' @param max_distance The max distance of a mutation and SNP can be apart to be considered for phasing
+#' @author sd11, dw9
+#' @export
 mut_mut_phasing = function(loci_file, phased_file, bam_file, bai_file, max_distance) {
   # Check if there are lines in the file, otherwise it will crash this script
   if (file.info(loci_file)$size == 0) {
@@ -199,7 +266,7 @@ mut_mut_phasing = function(loci_file, phased_file, bam_file, bai_file, max_dista
     count.data$phasing = NA
     for(h in 1:nrow(count.data)){
       counts = count.data[h,8:11]
-     print(counts) 
+      print(counts) 
       if(counts[2]>0 & counts[3]+counts[4] == 0){
         count.data$phasing[h]="phased"
         #}else if(counts[2]==0 & counts[3]+counts[4] > 0){
@@ -210,7 +277,7 @@ mut_mut_phasing = function(loci_file, phased_file, bam_file, bai_file, max_dista
         count.data$phasing[h]="clone-subclone"
       }else if(counts[2]>0 && counts[3]==0 && counts[4]>0){
         count.data$phasing[h]="subclone-clone"
-      }	
+      }  
     }
     
     write.table(count.data[!is.na(count.data$phasing),],phased_file,sep="\t",quote=F,row.names=F)
@@ -220,6 +287,8 @@ mut_mut_phasing = function(loci_file, phased_file, bam_file, bai_file, max_dista
 ############################################
 # MUT 2 CN phasing
 ############################################
+#' Run linkage pull on SNVs vs SNPs
+#' @noRd
 run_linkage_pull_snp = function(loci_file, bam_file, bai_file, chr, pos1, ref1, var1, pos2, ref2, var2, af, af_phased) {
   #
   # Runs the Linkage_pull.pl script with the given columns as its input. 
@@ -242,7 +311,18 @@ run_linkage_pull_snp = function(loci_file, bam_file, bai_file, chr, pos1, ref1, 
   return(linked.muts)
 }
 
-
+#' Run mutation to copy number phasing. This function requires the Linkage_pull.pl script in $PATH.
+#' Note: This function should either be run separately per chromosome and then combined with \code{\link{concat_files}}
+#' or on all chromsomes in one go, but then the _allHaplotypeInfo.txt Battenberg files need to be concatenated first.
+#' @param loci_file A list of loci
+#' @param phased_file The .BAFsegmented.txt output file from Battenberg
+#' @param hap_file Path to the _allHaplotypeInfo.txt Battenberg output file to be used
+#' @param bam_file Full path to the bam file
+#' @param bai_file Full path to the bai file
+#' @param outfile File to save the output
+#' @param max_distance The max distance of a mutation and SNP can be apart to be considered for phasing
+#' @author sd11, dw9
+#' @export
 mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, outfile, max_distance) {
   
   if (file.info(loci_file)$size == 0) {
@@ -262,9 +342,9 @@ mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, 
     phased = read.delim(phased_file, header=T, stringsAsFactors=F, quote="\"")
     # Compatible with both BB setups that have row.names and those that don't
     if (ncol(phased) == 6) {
-        colnames(phased) = c("SNP", "Chr","Pos", "AF", "AFphased", "AFsegmented")
+      colnames(phased) = c("SNP", "Chr","Pos", "AF", "AFphased", "AFsegmented")
     } else {
-        colnames(phased) = c("Chr","Pos", "AF", "AFphased", "AFsegmented")
+      colnames(phased) = c("Chr","Pos", "AF", "AFphased", "AFsegmented")
     }
     
     # TODO: check that chromosomes are using the same names between loci and phased files
@@ -273,18 +353,18 @@ mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, 
     hap.info = read.delim(hap_file, sep=" ", header=F, row.names=NULL, stringsAsFactors=F)
     # Compatible with both BB setups that have row.names and those that don't
     if (ncol(hap.info) == 7) {
-        colnames(hap.info) = c("SNP","dbSNP","pos","ref","mut","ref_count","mut_count")
+      colnames(hap.info) = c("SNP","dbSNP","pos","ref","mut","ref_count","mut_count")
     } else {
-        colnames(hap.info) = c("dbSNP","pos","ref","mut","ref_count","mut_count")
+      colnames(hap.info) = c("dbSNP","pos","ref","mut","ref_count","mut_count")
     }
     # get haplotypes that match phased heterozygous SNPs
     hap.info = hap.info[match(phased$Pos,hap.info$pos),]
-   
+    
     # Synchronise dfs in case some SNPs are not in hap.info
     selection = !is.na(hap.info$pos)
     hap.info = hap.info[selection,]
     phased = phased[selection,]
- 
+    
     #220212
     #phased$AF[hap.info$ref_count==1] = 1-phased$AF[hap.info$ref_count==1]
     phased$Ref = hap.info$ref
@@ -305,73 +385,35 @@ mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, 
     linked.muts$Parental <- rep(NA, dim(linked.muts)[1])
     if (nrow(linked.muts) > 0) {
       for (i in 1:nrow(linked.muts)) {
-	
-	# Fetch allele frequency
-	af = linked.muts$AF[i]
-	# Get number of reads covering the ref mutation allele
-	ref_count = hap.info[hap.info$pos==linked.muts$Pos2[i],]$ref_count
-	# Get number of reads covering the alt mutation allele
-	alt_count = hap.info[hap.info$pos==linked.muts$Pos2[i],]$mut_count
-	# Number of reads covering SNP allele A, that also cover mutation alt
-	linked_to_A = linked.muts[i,ACGT[linked.muts$Ref2[i]]]
-	# Number of reads covering SNP allele B, that also cover mutation alt
-	linked_to_B = linked.muts[i,ACGT[linked.muts$Var2[i]]]
-
-	if (af < 0.5 & alt_count==1 & linked_to_A > 0 & linked_to_B == 0) {
-		linked.muts$Parental[i] = "MUT_ON_DELETED"
-	} else if (af < 0.5 & alt_count==1 & linked_to_A == 0 & linked_to_B > 0) {
-		linked.muts$Parental[i] = "MUT_ON_RETAINED"
-	} else if (af > 0.5 & alt_count==1 & linked_to_A > 0 & linked_to_B == 0) {
-		linked.muts$Parental[i] = "MUT_ON_RETAINED"
-	} else if (af > 0.5 & alt_count==1 & linked_to_A == 0 & linked_to_B > 0) {
-		linked.muts$Parental[i] = "MUT_ON_DELETED"
-	} else if (af > 0.5 & ref_count==1 & linked_to_A > 0 & linked_to_B == 0) {
-		linked.muts$Parental[i] = "MUT_ON_DELETED"
-	} else if (af > 0.5 & ref_count==1 & linked_to_A == 0 & linked_to_B > 0) {
-		linked.muts$Parental[i] = "MUT_ON_RETAINED"
-	} else if (af < 0.5 & ref_count==1 & linked_to_A > 0 & linked_to_B == 0) {
-		linked.muts$Parental[i] = "MUT_ON_RETAINED"
-	} else if (af < 0.5 & ref_count==1 & linked_to_A == 0 & linked_to_B > 0) {
-		linked.muts$Parental[i] = "MUT_ON_DELETED"
-	}
-
-
-
-
-
-
-
-        #if (linked.muts$AF[i]>0.5) {
-        #  
-        #  if (linked.muts[i,ACGT[linked.muts$Var2[i]]] > 0 & linked.muts[i,ACGT[linked.muts$Ref2[i]]] == 0) {
-        #    linked.muts$Parental[i] = "MUT_ON_RETAINED"
-        #  }  else {
-        #    if (linked.muts[i,ACGT[linked.muts$Var2[i]]] == 0 & linked.muts[i,ACGT[linked.muts$Ref2[i]]] > 0) {
-        #      linked.muts$Parental[i] = "MUT_ON_DELETED"
-        #    }
-        #  }
-        #}
-        #else {	
-        #  if (linked.muts[i,ACGT[linked.muts$Var2[i]]] > 0 & linked.muts[i,ACGT[linked.muts$Ref2[i]]] == 0) {
-        #    linked.muts$Parental[i] = "MUT_ON_DELETED"
-        #  } else {
-        #    if (linked.muts[i,ACGT[linked.muts$Var2[i]]] == 0 & linked.muts[i,ACGT[linked.muts$Ref2[i]]] > 0) {
-        #      linked.muts$Parental[i] = "MUT_ON_RETAINED"
-        #    }
-        #  }
-        #}
-        # 
-        #220212
-        #if (linked.muts$AFphased[i] < 0.5) {
-        #  print(paste(linked.muts$Pos2[i],phased$AFphased[phased$Pos == linked.muts$Pos2[i]],sep=": "))
-        #  if (!is.na(linked.muts$Parental[i]) & linked.muts$Parental[i] == "MUT_ON_DELETED") {
-        #    linked.muts$Parental[i] = "MUT_ON_RETAINED"
-        #  } else {
-        #    if (!is.na(linked.muts$Parental[i]) & linked.muts$Parental[i] == "MUT_ON_RETAINED") {
-        #      linked.muts$Parental[i] = "MUT_ON_DELETED"
-        #    }
-        #  }
-        #}
+        
+        # Fetch allele frequency
+        af = linked.muts$AF[i]
+        # Get number of reads covering the ref mutation allele
+        ref_count = hap.info[hap.info$pos==linked.muts$Pos2[i],]$ref_count
+        # Get number of reads covering the alt mutation allele
+        alt_count = hap.info[hap.info$pos==linked.muts$Pos2[i],]$mut_count
+        # Number of reads covering SNP allele A, that also cover mutation alt
+        linked_to_A = linked.muts[i,ACGT[linked.muts$Ref2[i]]]
+        # Number of reads covering SNP allele B, that also cover mutation alt
+        linked_to_B = linked.muts[i,ACGT[linked.muts$Var2[i]]]
+        
+        if (af < 0.5 & alt_count==1 & linked_to_A > 0 & linked_to_B == 0) {
+          linked.muts$Parental[i] = "MUT_ON_DELETED"
+        } else if (af < 0.5 & alt_count==1 & linked_to_A == 0 & linked_to_B > 0) {
+          linked.muts$Parental[i] = "MUT_ON_RETAINED"
+        } else if (af > 0.5 & alt_count==1 & linked_to_A > 0 & linked_to_B == 0) {
+          linked.muts$Parental[i] = "MUT_ON_RETAINED"
+        } else if (af > 0.5 & alt_count==1 & linked_to_A == 0 & linked_to_B > 0) {
+          linked.muts$Parental[i] = "MUT_ON_DELETED"
+        } else if (af > 0.5 & ref_count==1 & linked_to_A > 0 & linked_to_B == 0) {
+          linked.muts$Parental[i] = "MUT_ON_DELETED"
+        } else if (af > 0.5 & ref_count==1 & linked_to_A == 0 & linked_to_B > 0) {
+          linked.muts$Parental[i] = "MUT_ON_RETAINED"
+        } else if (af < 0.5 & ref_count==1 & linked_to_A > 0 & linked_to_B == 0) {
+          linked.muts$Parental[i] = "MUT_ON_RETAINED"
+        } else if (af < 0.5 & ref_count==1 & linked_to_A == 0 & linked_to_B > 0) {
+          linked.muts$Parental[i] = "MUT_ON_DELETED"
+        }
       }
     }
   }
@@ -382,14 +424,13 @@ mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, 
 ############################################
 # Combine all the steps into a DP input file
 ############################################
+#' Main function that creates the DP input file. A higher level function should be called by users
+#' @noRd
 GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, is.male = F, out.dir = NULL, SNP.phase.file = NULL, mut.phase.file = NULL){
- 
+  
   subclone.data = read.table(subclone.file,sep="\t",header=T,stringsAsFactors=F)
-  #   subclone.data$subclonal.CN = (subclone.data$nMaj1_A + subclone.data$nMin1_A) * subclone.data$frac1_A
   subclone.data.gr = GenomicRanges::GRanges(subclone.data$chr, IRanges::IRanges(subclone.data$startpos, subclone.data$endpos), rep('*', nrow(subclone.data)))
   elementMetadata(subclone.data.gr) = subclone.data[,3:ncol(subclone.data)]
-  # 	info2 = as.data.frame(cbind(as.data.frame(info), array(NA, c(length(info), 7))))
-  #   colnames(info2) = c('chr','pos','WT.count','mut.count','subclonal.CN','nMaj1','nMin1','frac1','nMaj2','nMin2','frac2')
   
   info_anno = as.data.frame(cbind(array(NA, c(length(info), 7)))) 
   colnames(info_anno) = c('subclonal.CN','nMaj1','nMin1','frac1','nMaj2','nMin2','frac2')
@@ -410,7 +451,7 @@ GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, 
     phasing.gr$phasing = phasing$Parental
     inds = findOverlaps(info, phasing.gr)  
     info$phase[queryHits(inds)] = phasing.gr$phasing[subjectHits(inds)]
-  
+    
     info$phase[is.na(info$phase)]="unphased"
   }
   
@@ -542,16 +583,18 @@ GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, 
   write.table(df, outputfile, sep="\t", row.names=F, quote=F)
 }
 
+#' Convenience function to load the cellularity from a rho_and_psi file
+#' @noRd
 GetCellularity <- function(rho_and_psi_file) {
   d = read.table(rho_and_psi_file, header=T, stringsAsFactors=F)
   return(d['FRAC_GENOME','rho'])
 }
 
+#' Convenience function to fetch WTCount and mutCount
+#'@noRd
 GetWTandMutCount <- function(loci_file, allele_frequencies_file) {
-  #not.allowed.chroms = c("GL000191.1","GL000192.1","GL000193.1","GL000194.1","GL000195.1","GL000196.1","GL000197.1","GL000198.1","GL000199.1","GL000200.1","GL000201.1","GL000202.1","GL000203.1","GL000204.1","GL000205.1","GL000206.1","GL000207.1","GL000208.1","GL000209.1","GL000210.1","GL000211.1","GL000212.1","GL000213.1","GL000214.1","GL000215.1","GL000216.1","GL000217.1","GL000218.1","GL000219.1","GL000220.1","GL000221.1","GL000222.1","GL000223.1","GL000224.1","GL000225.1","GL000226.1","GL000227.1","GL000228.1","GL000229.1","GL000230.1","GL000231.1","GL000232.1","GL000233.1","GL000234.1","GL000235.1","GL000236.1","GL000237.1","GL000238.1","GL000239.1","GL000240.1","GL000241.1","GL000242.1","GL000243.1","GL000244.1","GL000245.1","GL000246.1","GL000247.1","GL000248.1","GL000249.1","hs37d5","MT","NC_007605")
   subs.data = read.table(loci_file, sep='\t', header=F, stringsAsFactors=F)
   subs.data = subs.data[order(subs.data[,1], subs.data[,2]),]
-  #subs.data = subs.data[!(subs.data[,1] %in% not.allowed.chroms),]
   
   # Replace dinucleotides and longer with just the first base. Here we assume the depth of the second base is the same and the number of dinucleotides is so low that removing the second base is negligable
   subs.data[,3] = apply(as.data.frame(subs.data[,3]), 1, function(x) { substring(x, 1,1) })
@@ -560,23 +603,21 @@ GetWTandMutCount <- function(loci_file, allele_frequencies_file) {
   subs.data.gr = GenomicRanges::GRanges(subs.data[,1], IRanges::IRanges(subs.data[,2], subs.data[,2]), rep('*', nrow(subs.data)))
   elementMetadata(subs.data.gr) = subs.data[,c(3,4)]
   
-  #alleleFrequencies = read.table(allele_frequencies_file, sep='\t',header=F, stringsAsFactors=F)
   alleleFrequencies = read.delim(allele_frequencies_file, sep='\t', header=T, quote=NULL, stringsAsFactors=F)
   alleleFrequencies = alleleFrequencies[order(alleleFrequencies[,1],alleleFrequencies[,2]),]
   print(head(alleleFrequencies))
   alleleFrequencies.gr = GenomicRanges::GRanges(alleleFrequencies[,1], IRanges::IRanges(alleleFrequencies[,2], alleleFrequencies[,2]), rep('*', nrow(alleleFrequencies)))
   elementMetadata(alleleFrequencies.gr) = alleleFrequencies[,3:7]
-
+  
   nucleotides = c("A","C","G","T")
   ref.indices = match(subs.data[,3],nucleotides)
   alt.indices = match(subs.data[,4],nucleotides)
   WT.count = as.numeric(unlist(sapply(1:nrow(alleleFrequencies),function(v,a,i){v[i,a[i]+2]},v=alleleFrequencies,a=ref.indices)))
   mut.count = as.numeric(unlist(sapply(1:nrow(alleleFrequencies),function(v,a,i){v[i,a[i]+2]},v=alleleFrequencies,a=alt.indices)))
-
+  
   combined = data.frame(chr=subs.data[,1],pos=subs.data[,2],WTCount=WT.count, mutCount=mut.count)
   colnames(combined) = c("chr","pos","WT.count","mut.count")
-
-  #   combined.gr = GenomicRanges::GRanges(subs.data[,1], IRanges::IRanges(subs.data[,2], subs.data[,2]+1), rep('*', nrow(subs.data)))
+  
   combined.gr = GenomicRanges::GRanges(seqnames(subs.data.gr), ranges(subs.data.gr), rep('*', nrow(subs.data)))
   elementMetadata(combined.gr) = data.frame(WT.count=WT.count, mut.count=mut.count)
   return(combined.gr)
@@ -585,6 +626,18 @@ GetWTandMutCount <- function(loci_file, allele_frequencies_file) {
 ##############################################
 # GetDirichletProcessInfo
 ##############################################
+#' Function that takes allele counts and a copy number profile to estimate mutation copy number,
+#' cancer cell fraction and multiplicity for each point mutation.
+#' @param loci_file Simple four column file with chromosome, position, reference allele and alternative allele
+#' @param allele_frequencies_file Output file from alleleCounter on the specified loci
+#' @param cellularity_file Full path to a Battenberg rho_and_psi output file
+#' @param subclone_file Full path to a Battenberg subclones.txt output file
+#' @param gender Specify male or female
+#' @param SNP.phase.file Output file from mut_mut_phasing
+#' @param mut.phase.file Output file from mut_cn_phasing
+#' @param output_file Name of the output file
+#' @author sd11
+#' @export
 runGetDirichletProcessInfo = function(loci_file, allele_frequencies_file, cellularity_file, subclone_file, gender, SNP.phase.file, mut.phase.file, output_file) {
   if(gender == 'male' | gender == 'Male') {
     isMale = T
@@ -609,7 +662,8 @@ runGetDirichletProcessInfo = function(loci_file, allele_frequencies_file, cellul
 #' @param fai_file Path to a reference genome index containing chromosome names
 #' @param ign_file Path to a file containing contigs to ignore
 #' @param genome Specify the reference genome for reading in the VCF
-#' @author Stefan Dentro
+#' @author sd11
+#' @export
 dpIn2vcf = function(vcf_infile, dpIn_file, vcf_outfile, fai_file, ign_file, genome="hg19") {
   vcf = readVcf(vcf_infile, genome=genome)
   
@@ -621,7 +675,7 @@ dpIn2vcf = function(vcf_infile, dpIn_file, vcf_outfile, fai_file, ign_file, geno
   
   # Read in the to be annotated data
   dat = read.table(dpIn_file, header=T, stringsAsFactors=F)
-
+  
   # Annotate the columns into the VCF object  
   vcf = addVcfInfoCol(vcf, dat$WT.count, 1, "Integer", "Number of reads carrying the wild type allele", "WC")
   vcf = addVcfInfoCol(vcf, dat$mut.count, 1, "Integer", "Number of reads carrying the mutant allele", "MC")
@@ -642,332 +696,10 @@ dpIn2vcf = function(vcf_infile, dpIn_file, vcf_outfile, fai_file, ign_file, geno
 }
 
 #' Convenience function that annotates a column into the supplied VCF object
+#' @noRd
 addVcfInfoCol = function(vcf, data, number, type, description, abbreviation) {
   i = header(vcf)@header$INFO
   exptData(vcf)$header@header$INFO <- rbind(i, DataFrame(Number=number, Type=type, Description=description, row.names=abbreviation))
   info(vcf)[,abbreviation] <- as(data, "CharacterList")
   return(vcf)
-}
-
-##############################################
-# Copy number preparations
-##############################################
-#' This function takes a Battenberg subclones.txt file, pulls out the A copy number profile,
-#' then it calculates the total CN and a weighted ploidy before it subsets the input data
-#' by columns: "chr", "startpos", "endpos", "nMaj1_A", "nMin1_A", "frac1_A", 
-#' "nMaj2_A", "nMin2_A", "frac2_A", "SDfrac_A". 
-#' 
-#' Then logic is applied for classifying copy number aberrations into
-#' a series of classes. There are two main groups: Clonal (starting with c) and
-#' Subclonal (starting with s).
-#' 
-#' A CNA can be:
-#' * HD : Homozygous deletion
-#' * LOH : Loss of heterozygosity
-#' * Amp : Amplification
-#' * Gain : Gain
-#' * NoCNV : Normal copy number without aberrations
-#' * Loss : Loss
-#' 
-#' The copy number segments, classification, weighted ploidy and samplename are saved
-#' to the specified output file
-#' 
-#' @param samplename, A String containing the samplename
-#' @param bb_subclones_file, A String containing the full path to a Battenberg subclones.txt file
-#' @param is_male, Boolean that should be TRUE if this sample is male, FALSE otherwise
-#' @param outfile, A String with the full path to where the output should be written
-#' @author Tom Mitchell
-collate_bb_subclones = function(samplename, bb_subclones_file, is_male, outfile) {
-  allsegs = NULL
-  cndata = read.table(bb_subclones_file, header=T, stringsAsFactors=F)
-  cndata = cbind(samplename, cndata)
-  # Remove the X chromosome when sample is male as Battenberg cannot infer copy number there
-  if (is_male) {
-    cndata = cndata[!cndata$chr=="X",]
-  }
-  
-  # Obtain the total copy number for each segment
-  totalcn = rep(0, dim(cndata)[1])
-  for (k in 1:nrow(cndata)) {
-    # Clonal copy number
-    if (cndata$frac1_A[k] == 1) {
-      totalcn[k] = cndata$nMaj1_A[k] + cndata$nMin1_A[k]
-    # Subclonal copy number - which is represented as a mixture of two states
-    } else if (cndata$frac1_A[k]!="Inf" & cndata$frac1_A[k]!="-Inf") {
-      totalcn[k] = (cndata$nMaj1_A[k] + cndata$nMin1_A[k]) * cndata$frac1_A[k] + (cndata$nMaj2_A[k] + cndata$nMin2_A[k]) * cndata$frac2_A[k]
-    }
-    cndataweighted = totalcn * (cndata$endpos - cndata$startpos) / (sum(as.numeric(cndata$endpos-cndata$startpos)))
-  }
-  # Ploidy weighted by segment size
-  ploidy = round(sum(cndataweighted)/2)*2
-  
-  # Collating logical arguments for LOH, Amp, HD etc
-  allsegs = data.frame(cndata[,1:4], cndata[,9:15], ploidy)
-  names(allsegs) = c("Tumour_Name","chr", "startpos",
-                       "endpos", "nMaj1_A", "nMin1_A",
-                       "frac1_A", "nMaj2_A", "nMin2_A", "frac2_A",
-                       "SDfrac_A", "tumour_ploidy")
-  
-  # Now classify all segments into a category
-  tot = dim(allsegs)[1]
-  # if you have clonal LOH, subclonal LOH is not counted!!!  Losses not counted
-  allsegsa <- NULL
-  CNA <- NULL
-  for (i in 1:dim(allsegs)[1]) {
-    # Clonal copy number
-    if (is.na(allsegs$nMaj2_A[i])) {
-      if (allsegs$nMin1_A[i] == 0 & allsegs$nMaj1_A[i] == 0) {
-        allsegsa <- rbind(allsegsa, allsegs[i,c(1:7,11:12)])
-        CNA <- c(CNA, "cHD")
-      }
-      if (xor(allsegs$nMin1_A[i] == 0, allsegs$nMaj1_A[i] == 0)) {
-        allsegsa <- rbind(allsegsa, allsegs[i,c(1:7,11:12)])
-        CNA <- c(CNA, "cLOH")
-      }
-      if ((allsegs$nMaj1_A[i] > allsegs$tumour_ploidy[i]/2) |
-            (allsegs$nMin1_A[i] > allsegs$tumour_ploidy[i]/2)) {
-        if ((allsegs$nMaj1_A[i] > allsegs$tumour_ploidy[i]*2) |
-              (allsegs$nMin1_A[i] > allsegs$tumour_ploidy[i]*2)) {
-          allsegsa <- rbind(allsegsa, allsegs[i,c(1:7,11:12)])
-          CNA <- c(CNA, "cAmp")
-        }
-        else {
-          allsegsa <- rbind(allsegsa, allsegs[i,c(1:7,11:12)])
-          CNA <- c(CNA, "cGain")
-        }
-      }
-      if ((allsegs$nMaj1_A[i] == allsegs$tumour_ploidy[i]/2) &
-            (allsegs$nMin1_A[i] == allsegs$tumour_ploidy[i]/2)) {
-        allsegsa <- rbind(allsegsa, allsegs[i,c(1:7,11:12)])
-        CNA <- c(CNA, "NoCNV")
-      }
-      if ((allsegs$nMaj1_A[i] < allsegs$tumour_ploidy[i]/2) |
-            (allsegs$nMin1_A[i] < allsegs$tumour_ploidy[i]/2)) {
-        allsegsa <- rbind(allsegsa, allsegs[i,c(1:7,11:12)])
-        CNA <- c(CNA, "cLoss")
-      }
-    }
-    
-    # Subclonal copy number
-    if (!is.na(allsegs$nMaj2_A[i])) {
-      if (allsegs$nMin1_A[i] == 0 & allsegs$nMaj1_A[i] == 0) {
-        CNA <- c(CNA, "sHD")
-        allsegsa <- rbind(allsegsa, allsegs[i,c(1:7,11:12)])
-      }
-      if ((allsegs$nMin1_A[i] == 0 | allsegs$nMaj1_A[i] == 0) &
-            xor(allsegs$nMin2_A[i] == 0, allsegs$nMaj2_A[i] == 0)) {
-        CNA <- c(CNA, "cLOH")
-        tmp <- allsegs[i,c(1:4,8:12)]
-        names(tmp) <- names(allsegs[i,c(1:7,11:12)])
-        allsegsa <- rbind(allsegsa, tmp[,names(allsegs[i,c(1:7,11:12)])])
-      }
-      else if (xor(allsegs$nMin1_A[i] == 0, allsegs$nMaj1_A[i] == 0)) {
-        CNA <- c(CNA, "sLOH")
-        allsegsa <- rbind(allsegsa, allsegs[i,c(1:7,11:12)])
-      }
-      if ((allsegs$nMaj1_A[i] > allsegs$tumour_ploidy[i]/2 |
-             allsegs$nMin1_A[i] > allsegs$tumour_ploidy[i]/2) &
-            (allsegs$nMaj2_A[i] > allsegs$tumour_ploidy[i]/2 |
-               allsegs$nMin2_A[i] > allsegs$tumour_ploidy[i]/2)) {
-        if ((allsegs$nMaj1_A[i] > allsegs$tumour_ploidy[i]*2 |
-               allsegs$nMin1_A[i] > allsegs$tumour_ploidy[i]*2) &
-              (allsegs$nMaj2_A[i] > allsegs$tumour_ploidy[i]*2 |
-                 allsegs$nMin2_A[i] > allsegs$tumour_ploidy[i]*2)) {
-          CNA <- c(CNA, "cAmp")
-          allsegsa <- rbind(allsegsa, allsegs[i,c(1:7,11:12)])
-        }
-        else {
-          CNA <- c(CNA, "cGain")
-          allsegsa <- rbind(allsegsa, allsegs[i,c(1:7,11:12)])
-        }
-      }
-      if ((allsegs$nMin2_A[i] > allsegs$tumour_ploidy[i]/2 & allsegs$nMin1_A[i] != allsegs$nMin2_A[i])|
-            (allsegs$nMaj2_A[i] > allsegs$tumour_ploidy[i]/2 & allsegs$nMaj1_A[i] != allsegs$nMaj2_A[i])) {
-        if ((allsegs$nMin2_A[i] > allsegs$tumour_ploidy[i]*2 & allsegs$nMin1_A[i] != allsegs$nMin2_A[i]) |
-              (allsegs$nMaj2_A[i] > allsegs$tumour_ploidy[i]*2 & allsegs$nMaj1_A[i] != allsegs$nMaj2_A[i])) {
-          CNA <- c(CNA, "sAmp")
-          tmp <- allsegs[i,c(1:4,8:12)]
-          names(tmp) <- names(allsegs[i,c(1:7,11:12)])
-          allsegsa <- rbind(allsegsa, tmp[,names(allsegs[i,c(1:7,11:12)])])
-        }
-        else {
-          CNA <- c(CNA, "sGain")
-          tmp <- allsegs[i,c(1:4,8:12)]
-          names(tmp) <- names(allsegs[i,c(1:7,11:12)])
-          allsegsa <- rbind(allsegsa, tmp[,names(allsegs[i,c(1:7,11:12)])])
-        }
-      }
-      if ((allsegs$nMaj1_A[i] < allsegs$tumour_ploidy[i]/2 |
-             allsegs$nMin1_A[i] < allsegs$tumour_ploidy[i]/2) &
-            (allsegs$nMaj2_A[i] < allsegs$tumour_ploidy[i]/2 |
-               allsegs$nMin2_A[i] < allsegs$tumour_ploidy[i]/2)) {
-        CNA <- c(CNA, "cLoss")
-        tmp <- allsegs[i,c(1:4,8:12)]
-        names(tmp) <- names(allsegs[i,c(1:7,11:12)])
-        allsegsa <- rbind(allsegsa, tmp[,names(allsegs[i,c(1:7,11:12)])])
-      }
-      if (((allsegs$nMaj1_A[i] < allsegs$tumour_ploidy[i]/2 & allsegs$nMaj1_A[i] != allsegs$nMaj2_A[i]) |
-             (allsegs$nMin1_A[i] < allsegs$tumour_ploidy[i]/2 & allsegs$nMin1_A[i] != allsegs$nMin2_A[i]))) {
-        allsegsa <- rbind(allsegsa, allsegs[i,c(1:7,11:12)])
-        CNA <- c(CNA, "sLoss")      
-      }
-    }
-    if(i %% 100 ==0){
-      print(paste(i,"/",tot))
-    }
-  }  
-  
-  allsegsa <- cbind(allsegsa, CNA)
-  allsegsa$frac1_A[allsegsa$CNA == "cGain"|allsegsa$CNA == "cAmp"|allsegsa$CNA == "cLOH"|allsegsa$CNA == "cHD"|allsegsa$CNA == "cLoss"] = 1
-  
-  # Switch the columns
-  allsegsa = data.frame(allsegsa[,-1], Tumour_Name=samplename)
-  
-  write.table(allsegsa, file=outfile, sep="\t", quote=F, row.names=F)
-}
-
-#' This function extends existing categories by a list of sizes
-#' @param infile string that points to a collated Battenberg subclones file
-#' @param outfile string where the output will be written.
-#' @size_categories named vector with size options to consider for each CNA category
-extend_bb_cn_categories = function(infile, outfile, size_categories=c("3"=10^3, "4"=10^4, "5"=10^5, "6"=10^6, "7"=10^7, "8"=10^8, "9"=10^9, "10"=10^10)) {
-  dat = read.table(infile, header=T, stringsAsFactors=F)
-  
-  # Assign a segment to the first category that is larger than it
-  dat$category = sapply(1:nrow(dat), 
-                        function(i, dat, size_categories) { 
-                          seg_len = dat$endpos[i] - dat$startpos[i]
-                          cat_index = which(!(size_categories < seg_len))[1]
-                          return(paste(dat$CNA[i], "_", names(cat_index), sep=""))
-                        }, dat=dat, size_categories=size_categories)
-  
-  write.table(dat, file=outfile, sep="\t", row.names=F, quote=F)
-}
-
-#' Count how often each of the categories is present in this sample
-#' @param infile string pointing to a collated Battenberg subclones file with extended CNA categories
-#' @param outfile string pointing to where the catalog should be written
-#' @param size_categories named vector with the size options to consider. This should be the same vector given to extend_bb_cn_categories
-get_bb_cn_catalog = function(infile, outfile, size_categories=c("3"=10^3, "4"=10^4, "5"=10^5, "6"=10^6, "7"=10^7, "8"=10^8, "9"=10^9, "10"=10^10)) {
-  dat = read.table(infile, header=T, stringsAsFactors=F)
-  # Match the CN types with the size categories to create all catalog entries
-  CN_types = c("NoCNV", "cAmp", "cGain", "cLOH", "cLoss", "sAmp", "sGain", "sLOH", "sLoss")
-  CN_classes = sapply(1:length(size_categories), 
-                      function(i, CN_classes, size_categories) { paste(CN_types, names(size_categories)[i], sep="_") }, 
-                      CN_classes=CN_classes, size_categories=size_categories)
-  # Count how often each category is available
-  catalog = do.call(rbind, lapply(1:length(CN_classes), 
-                                  function(i, CN_classes, dat) { data.frame(category=CN_classes[i], count=sum(dat$category==CN_classes[i])) }, 
-                                  CN_classes=CN_classes, dat=dat))
-
-  write.table(catalog, file=outfile, quote=F, sep="\t", row.names=F)
-}
-
-##############################################
-# QC
-##############################################
-createPng <- function(p, filename, width, height) {
-  png(filename=filename, width=width, height=height)
-  print(p)
-  dev.off()
-}
-
-meltFacetPlotData <- function(data, subsamplenames) {
-  d = as.data.frame(data)
-  colnames(d) = subsamplenames
-  data.m = reshape2::melt(d)
-  return(data.m)
-}
-
-createHistFacetPlot <- function(data, title, xlab, ylab, binwidth) {
-  p = ggplot2::ggplot(data) + ggplot2::aes(x=value, y=..count..) + ggplot2::geom_histogram(binwidth=binwidth, colour="black", fill="gray") + ggplot2::facet_grid(variable ~ .)
-  p = p + ggplot2::theme_bw(base_size=35) + ggplot2::ggtitle(title) + ggplot2::xlab(xlab) + ggplot2::ylab(ylab)
-  return(p)
-}
-
-createBoxFacetPlot <- function(data, title, xlab, ylab) {
-  p = ggplot2::ggplot(data) + ggplot2::aes(x=variable, y=value) + ggplot2::geom_boxplot() + ggplot2::facet_grid(subsample ~ .)
-  p = p + ggplot2::theme_bw() + ggplot2::ggtitle(title) + ggplot2::xlab(xlab) + ggplot2::ylab(ylab)
-  return(p)
-}
-
-createQCDocument <- function(res, samplename, subsamplenames, outpath, cellularity) {
-  p = createHistFacetPlot(meltFacetPlotData(res$totalCopyNumber, subsamplenames), paste(samplename, "totalCopyNumber"), "Copynumber", "Count", binwidth=1)
-  createPng(p, paste(outpath, samplename, "_totalCopyNumber.png", sep=""), width=1500, height=500*length(subsamplenames))
-  
-  p = createHistFacetPlot(meltFacetPlotData(res$mutation.copy.number, subsamplenames), paste(samplename, "mutation.copy.number"), "mutation.copy.number", "Count", binwidth=0.1)
-  p = p + ggplot2::xlim(0,5)
-  createPng(p, paste(outpath, samplename, "_mutation.copy.number.png", sep=""), width=1500, height=500*length(subsamplenames))
-  
-  p = createHistFacetPlot(meltFacetPlotData(res$copyNumberAdjustment, subsamplenames), paste(samplename, "copyNumberAdjustment"), "copyNumberAdjustment", "Count (log10)", binwidth=1)
-  p = p + ggplot2::scale_y_log10()
-  createPng(p, paste(outpath, samplename, "_copyNumberAdjustment.png", sep=""), width=1500, height=500*length(subsamplenames))
-  
-  p = createHistFacetPlot(meltFacetPlotData(res$mutCount/(res$mutCount+res$WTCount), subsamplenames), paste(samplename, "alleleFrequency"), "Allele Frequency", "Count", binwidth=0.01)
-  createPng(p, paste(outpath, samplename, "_alleleFrequency.png", sep=""), width=1500, height=500*length(subsamplenames))
-  
-  p = createHistFacetPlot(meltFacetPlotData(res$kappa, subsamplenames), paste(samplename, "kappa"), "Kappa", "Count", binwidth=0.01)
-  createPng(p, paste(outpath, samplename, "_kappa.png", sep=""), width=1500, height=500*length(subsamplenames))
-  
-  #   p = createHistFacetPlot(meltFacetPlotData(res$subclonal.fraction, subsamplenames), paste(samplename, "subclonal.fraction"), "Subclonal fraction", "Count", binwidth=0.01)
-  #   createPng(p, paste(outpath, samplename, "_subclonal.fraction.png", sep=""), width=1500, height=500*length(subsamplenames))
-  
-  p = createHistFacetPlot(meltFacetPlotData((res$mutCount+res$WTCount), subsamplenames), paste(samplename, "depth"), "Depth", "Count", binwidth=5)
-  createPng(p, paste(outpath, samplename, "_depth.png", sep=""), width=1500, height=500*length(subsamplenames))
-  
-  #   fractionOfCells = res$mutation.copy.number / res$copyNumberAdjustment
-  #   meltFacetPlotData(fractionOfCells, subsamplenames)
-  p = createHistFacetPlot(meltFacetPlotData(res$subclonal.fraction, subsamplenames), paste(samplename, "Fraction Of Cells"), "Fraction of Cells", "Count", binwidth=0.05)
-  p = p + ggplot2::geom_vline(xintercept=0.5, colour="red", linetype="longdash", size=2) + ggplot2::geom_vline(xintercept=1.5, colour="red", linetype="longdash", size=2) + ggplot2::xlim(0,3) #scale_y_log10()
-  createPng(p, paste(outpath, samplename, "_fractionOfCells.png", sep=""), width=1500, height=500*length(subsamplenames))
-  
-  #   manualMutCopyNum = mutationBurdenToMutationCopyNumber(res$mutCount/(res$mutCount+res$WTCount),res$totalCopyNumber ,cellularity)
-  #   p = createHistFacetPlot(meltFacetPlotData(manualMutCopyNum, subsamplenames), paste(samplename, "manualMutCopyNum"), "Mutation copy number", "Count", binwidth=0.1)
-  #   createPng(p, paste(outpath, samplename, "_manualMutCopyNum.png", sep=""), width=500, height=250*length(subsamplenames))
-  #   
-  #   manualFractionOfCells = mutationBurdenToMutationCopyNumber(res$mutCount/(res$mutCount+res$WTCount),res$totalCopyNumber ,cellularity) / res$copyNumberAdjustment
-  #   p = createHistFacetPlot(meltFacetPlotData(manualFractionOfCells, subsamplenames), paste(samplename, "manualFractionOfCells"), "Fraction of Cells", "Count", binwidth=0.01)
-  #   createPng(p, paste(outpath, samplename, "_manualFractionOfCells.png", sep=""), width=1500, height=500*length(subsamplenames))
-  
-  # Manually melt the data
-  d.m = data.frame()
-  for (i in 1:length(subsamplenames)) {
-    d.loc = data.frame(subsample=subsamplenames[i],variable=factor(dataset$chromosome[,i]), value=dataset$subclonal.fraction[,i])
-    d.m = rbind(d.m, d.loc)
-  }
-  p = createBoxFacetPlot(d.m, paste(samplename, "subclonal fraction per chrom"), "Chromosome", "Subclonal fraction")
-  createPng(p, paste(outpath, samplename, "_subclonalFractionPerChromosome.png", sep=""), width=1500, height=500*length(subsamplenames))
-  
-  # Manually melt the data
-  d = as.data.frame(dataset$chromosome)
-  colnames(d) = subsamplenames
-  d.m = data.frame()
-  for (i in 1:ncol(d)) {
-    d.loc = d[dataset$subclonal.fraction > 1.5,i]
-    if(length(d.loc) > 0) { 
-      d.m = rbind(d.m, data.frame(variable=colnames(d)[i], value=factor(d.loc)))
-    }
-  }
-  
-  if (nrow(d.m) > 0) {
-    p = createHistFacetPlot(d.m, paste(samplename, "subclonal fraction > 1.5"), "Chromosome", "Count", binwidth=1)
-    createPng(p, paste(outpath, samplename, "_large.subclonal.fraction.by.chrom.png", sep=""), width=1500, height=500*length(subsamplenames))
-  }
-}
-
-#'
-#' Run the QC on specified data
-#'
-runQc = function(infile, datpath, outpath) {
-  sample2purity = read.table(infile, header=T, stringsAsFactors=F)
-  for (samplename in unique(sample2purity$sample)) {
-    print(samplename)
-    datafiles = sample2purity[sample2purity$sample==samplename,]$datafile
-    subsamples = sample2purity[sample2purity$sample==samplename,]$subsample
-    cellularity = sample2purity[sample2purity$sample==samplename,]$cellularity
-    if (file.exists(paste(datpath,datafiles, sep=""))) {
-      dataset = load.data(datpath,"",datafiles, cellularity=cellularity, Chromosome="chr", position="end", WT.count="WT.count", mut.count="mut.count", subclonal.CN="subclonal.CN", no.chrs.bearing.mut="no.chrs.bearing.mut", mutation.copy.number="mutation.copy.number", subclonal.fraction="subclonal.fraction", data_file_suffix="")
-      createQCDocument(dataset, samplename, subsamples, outpath, cellularity)
-    }
-  }
 }
