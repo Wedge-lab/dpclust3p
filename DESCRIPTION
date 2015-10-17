@@ -1,17 +1,16 @@
 Package: dpclust3p
 Type: Package
-Title: Dirichlet Process Clustering Pre-Processing Pipeline
-Version: 1.0
-Date: 2015-01-04
+Title: Dirichlet Process Clustering Pre-Processing Package
+Version: 1.0.0
+Date: 2015-10-17
 Author: Stefan Dentro
 Maintainer: Stefan Dentro <sd11@sanger.ac.uk>
 License: GPL-3
 LazyLoad: yes
-Description: Package that takes various inputs, phases mutations against other mutations and copynumber, 
-    transforms allele frequencies into an estimate of fraction of cells (CCF) and generates a number of 
-    QC figures to assess the data quality.
+Description: Package that takes Battenberg copy number output and somatic point mutations and
+  transforms the allele frequencies into an estimate of fraction of cells (CCF). It can also
+  perform mutation to mutation and mutation to SNP phasing and contains a number of other 
+  convenience functions.
 Depends: 
     GenomicRanges,
-    VariantAnnotation,
-    ggplot2,
-    reshape2
+    VariantAnnotation
