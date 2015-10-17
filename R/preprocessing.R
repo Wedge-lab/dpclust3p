@@ -62,7 +62,7 @@ split_by_chrom = function(infile, prefix, postfix, outdir, chrom_file) {
 #' @author sd11
 #' @export
 parseFai = function(fai_file) {
-  fai = read.table(fai_file, header=F, stringsAsFactor=F)
+  fai = read.table(fai_file, header=F, stringsAsFactors=F)
   colnames(fai) = c("chromosome", "length", "offset", "fasta_line_length", "line_blen")
   return(fai)
 }
@@ -74,7 +74,7 @@ parseFai = function(fai_file) {
 #' @author sd11
 #' @export
 parseIgnore = function(ignore_file) {
-  ign = read.table(ignore_file, header=F, stringsAsFactor=F)
+  ign = read.table(ignore_file, header=F, stringsAsFactors=F)
   colnames(ign) = c("chromosome")
   return(ign)
 }
@@ -140,7 +140,7 @@ dumpCounts.Sanger = function(vcf_infile, tumour_outfile, normal_outfile=NA, refe
   }
   
   # Read in the vcf and dump the tumour counts in the right format
-  v = readVcf(vcf_infile, refence_genome)
+  v = VariantAnnotation::readVcf(vcf_infile, refence_genome)
   tumour = getCountsTumour(v)
   tumour = formatOutput(tumour, v)
   write.output(tumour, tumour_outfile)
@@ -665,7 +665,7 @@ runGetDirichletProcessInfo = function(loci_file, allele_frequencies_file, cellul
 #' @author sd11
 #' @export
 dpIn2vcf = function(vcf_infile, dpIn_file, vcf_outfile, fai_file, ign_file, genome="hg19") {
-  vcf = readVcf(vcf_infile, genome=genome)
+  vcf = VariantAnnotation::readVcf(vcf_infile, genome=genome)
   
   # Remove muts on chroms not to look at
   fai = parseFai(fai_file)
@@ -692,14 +692,14 @@ dpIn2vcf = function(vcf_infile, dpIn_file, vcf_outfile, fai_file, ign_file, geno
   vcf = addVcfInfoCol(vcf, dat$no.chrs.bearing.mut, 1, "Float", "Number of chromosomes bearing the mutation", "NCBM")
   
   # Write the output, gzip and index it
-  writeVcf(vcf, file=vcf_outfile, index=T)
+  VariantAnnotation::writeVcf(vcf, file=vcf_outfile, index=T)
 }
 
 #' Convenience function that annotates a column into the supplied VCF object
 #' @noRd
 addVcfInfoCol = function(vcf, data, number, type, description, abbreviation) {
   i = header(vcf)@header$INFO
-  exptData(vcf)$header@header$INFO <- rbind(i, DataFrame(Number=number, Type=type, Description=description, row.names=abbreviation))
+  exptData(vcf)$header@header$INFO <- rbind(i, S4Vectors::DataFrame(Number=number, Type=type, Description=description, row.names=abbreviation))
   info(vcf)[,abbreviation] <- as(data, "CharacterList")
   return(vcf)
 }

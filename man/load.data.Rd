@@ -29,6 +29,10 @@ load.data(datpath, samplename, list_of_data_files, cellularity, Chromosome,
 
 \item{no.chrs.bearing.mut}{The name of the column containing the number of chromsomes bearing the mutation information in the input, type string.}
 
+\item{mutation.copy.number}{Mutation copy number}
+
+\item{subclonal.fraction}{Subclonal fraction}
+
 \item{data_file_suffix}{A suffix to be appended to each item in list_of_data_files to complete the filenames (for example dirichletInput.R), type string.}
 }
 \value{
@@ -41,6 +45,6 @@ load.data
 Load data files for a specific set of samples belonging to the same individual/experiment.
 }
 \author{
-Stefan Dentro
+sd11
 }
 

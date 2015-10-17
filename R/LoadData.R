@@ -14,9 +14,11 @@
 #' @param mut.count The name of the column containing the mutation allele count information in the input, type string.
 #' @param subclonal.CN The name of the column containing the total subclonal copynumber information in the input, type string.
 #' @param no.chrs.bearing.mut The name of the column containing the number of chromsomes bearing the mutation information in the input, type string.
+#' @param mutation.copy.number Mutation copy number
+#' @param subclonal.fraction Subclonal fraction
 #' @param data_file_suffix A suffix to be appended to each item in list_of_data_files to complete the filenames (for example dirichletInput.R), type string.
 #' @return A named list of matrices and vectors with the following items: chromosome, position, WTCount, mutCount, totalCopyNumber, copyNumberAdjustment, non.deleted.muts, kappa, mutation.copy.number, subclonal.fraction, removed_indices, chromosome.not.filtered, mut.position.not.filtered
-#' @author Stefan Dentro
+#' @author sd11
 load.data <- function(datpath, samplename, list_of_data_files, cellularity, Chromosome, position, WT.count, mut.count, subclonal.CN, no.chrs.bearing.mut, mutation.copy.number, subclonal.fraction, data_file_suffix) {
   warning("The load.data function is deprecated and should be merged with the one in DPCLUST")
   data=list()
