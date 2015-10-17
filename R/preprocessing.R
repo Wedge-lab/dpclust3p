@@ -139,11 +139,17 @@ alleleCount = function(locifile, bam, outfile, min_baq=20, min_maq=35) {
   system(cmd, wait=T)
 }
 
-#' TODO: still used?
+#' Dump allele counts from vcf
+
 #' Dump allele counts stored in the sample columns of the VCF file. Output will go into a file
 #' supplied as tumour_outfile and optionally normal_outfile. It will be a fully formatted
 #' allele counts file as returned by alleleCounter.
-#' @noRd
+#' @param vcf_infile The vcf file to read in
+#' @param tumour_outfile File to save the tumour counts to
+#' @param normal_outfile Optional parameter specifying where the normal output should go
+#' @param refence_genome Optional parameter specifying the reference genome build used
+#' @author sd11
+#' @export
 dumpCounts.Sanger = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19") {
   # Helper function for writing the output  
   write.output = function(output, output_file) {
@@ -178,7 +184,7 @@ formatOutput = function(counts_table, v) {
 #' @param v The vcf file
 #' @param centre The sequencing centre of which pipeline the vcf file originates
 #' @author sd11
-#' @export
+#' @noRd
 getCountsNormal = function(v, centre="sanger") {
   if (centre!="sanger") {
     warning("Other centres beyond the Sanger not yet supported")
@@ -193,7 +199,7 @@ getCountsNormal = function(v, centre="sanger") {
 #' @param v The vcf file
 #' @param centre The sequencing centre of which pipeline the vcf file originates
 #' @author sd11
-#' @export
+#' @noRd
 getCountsTumour = function(v, centre="sanger") {
   if (centre!="sanger") {
     warning("Other centres beyond the Sanger not yet supported")
@@ -208,7 +214,7 @@ getCountsTumour = function(v, centre="sanger") {
 #' @param v The vcf file
 #' @param sample_col The column in which the counts are. If it's the first sample mentioned in the vcf this would be sample_col 1
 #' @author sd11
-#' @export
+#' @noRd
 getAlleleCounts.Sanger = function(v, sample_col) {
   return(cbind(geno(v)$FAZ[,sample_col]+geno(v)$RAZ[,sample_col], geno(v)$FCZ[,sample_col]+geno(v)$RCZ[,sample_col], geno(v)$FGZ[,sample_col]+geno(v)$RGZ[,sample_col], geno(v)$FTZ[,sample_col]+geno(v)$RTZ[,sample_col]))
 }
