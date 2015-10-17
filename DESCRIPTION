@@ -12,5 +12,7 @@ Description: Package that takes Battenberg copy number output and somatic point 
   perform mutation to mutation and mutation to SNP phasing and contains a number of other 
   convenience functions.
 Depends: 
+    VariantAnnotation,
     GenomicRanges,
-    VariantAnnotation
+    IRanges,
+    S4Vectors
