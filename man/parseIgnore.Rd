@@ -2,8 +2,7 @@
 % Please edit documentation in R/preprocessing.R
 \name{parseIgnore}
 \alias{parseIgnore}
-\title{Convenience function that parses an ignore file. This file
-is expected to have a single column with just chromosome names}
+\title{Parse chromosomes to ignore file}
 \usage{
 parseIgnore(ignore_file)
 }

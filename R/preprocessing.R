@@ -1,6 +1,8 @@
 ALLELECOUNTER = "alleleCounter"
 LINKAGEPULL = "Linkage_pull.pl"
 
+#' Concatenate split files
+#' 
 #' Convenience function to concatenate a series of files specified in a file of file names.
 #' This function assumes all files have the same layout.
 #' @param fofn A file of file names to be concatenated
@@ -27,7 +29,8 @@ concat_files = function(fofn, inputdir, outfile, haveHeader) {
   write.table(output, file=outfile, col.names=haveHeader, row.names=F, sep="\t", quote=F)
 }
 
-
+#' Split a file per chromosome
+#'
 #' Convenience function to split an input file per chromosome. All it requires is that
 #' the infile has as first column chromosome specification. The output files will be named
 #' outdir/prefixCHROMNUMBERpostfix
@@ -55,6 +58,8 @@ split_by_chrom = function(infile, prefix, postfix, outdir, chrom_file) {
 ############################################
 # VCF 2 LOCI
 ############################################
+#' Parse genome index
+#' 
 #' Convenience function that parses a reference genome index as generated
 #' by samtools index
 #' @param fai_file The index
@@ -67,6 +72,8 @@ parseFai = function(fai_file) {
   return(fai)
 }
 
+#' Parse chromosomes to ignore file
+#' 
 #' Convenience function that parses an ignore file. This file
 #' is expected to have a single column with just chromosome names
 #' @param ignore_file The file specifying to be ignored chromosomes
@@ -79,6 +86,8 @@ parseIgnore = function(ignore_file) {
   return(ign)
 }
 
+#' Transform vcf to loci file
+#' 
 #' Function that dumps the loci of snvs from a series of vcf files into a single loci file
 #' @param vcf_files A vector of vcf files to be considered
 #' @param fai_file Reference genome index
@@ -110,6 +119,8 @@ vcf2loci = function(vcf_files, fai_file, ign_file, outfile) {
 ############################################
 # Allele counting
 ############################################
+#' Run alleleCount
+#' 
 #' Count the alleles for specified locations in the loci file. Expects alleleCount binary in $PATH
 #' @param locifile A file with at least chromsome and position columns of the locations to be counted
 #' @param bam A bam file
@@ -161,6 +172,8 @@ formatOutput = function(counts_table, v) {
   return(output)
 }
 
+#' Dump allele counts from vcf for normal
+#' 
 #' Returns an allele counts table for the normal sample
 #' @param v The vcf file
 #' @param centre The sequencing centre of which pipeline the vcf file originates
@@ -174,6 +187,8 @@ getCountsNormal = function(v, centre="sanger") {
   return(getAlleleCounts.Sanger(v, 1))
 }
 
+#' Dump allele counts from vcf for tumour
+#' 
 #' Returns an allele counts table for the tumour sample
 #' @param v The vcf file
 #' @param centre The sequencing centre of which pipeline the vcf file originates
@@ -187,6 +202,8 @@ getCountsTumour = function(v, centre="sanger") {
   return(getAlleleCounts.Sanger(v, 2))
 }
 
+#' Dump allele counts from Sanger pipeline vcf
+#' 
 #' Helper function that dumps the allele counts from a Sanger pipeline VCF file
 #' @param v The vcf file
 #' @param sample_col The column in which the counts are. If it's the first sample mentioned in the vcf this would be sample_col 1
@@ -218,6 +235,8 @@ run_linkage_pull_mut = function(output, loci_file, bam_file, bai_file) {
   return(count.data)
 }
 
+#' Phase mutation to mutation
+#' 
 #' Run mutation to mutation phasing. This function requires the Linkage_pull.pl script in $PATH.
 #' @param loci_file A list of loci
 #' @param phased_file File to save the output
@@ -311,6 +330,8 @@ run_linkage_pull_snp = function(loci_file, bam_file, bai_file, chr, pos1, ref1, 
   return(linked.muts)
 }
 
+#' Phase mutation to SNP/copy number
+#' 
 #' Run mutation to copy number phasing. This function requires the Linkage_pull.pl script in $PATH.
 #' Note: This function should either be run separately per chromosome and then combined with \code{\link{concat_files}}
 #' or on all chromsomes in one go, but then the _allHaplotypeInfo.txt Battenberg files need to be concatenated first.
@@ -626,6 +647,8 @@ GetWTandMutCount <- function(loci_file, allele_frequencies_file) {
 ##############################################
 # GetDirichletProcessInfo
 ##############################################
+#' Create the DPClust input file
+#' 
 #' Function that takes allele counts and a copy number profile to estimate mutation copy number,
 #' cancer cell fraction and multiplicity for each point mutation.
 #' @param loci_file Simple four column file with chromosome, position, reference allele and alternative allele
@@ -633,8 +656,8 @@ GetWTandMutCount <- function(loci_file, allele_frequencies_file) {
 #' @param cellularity_file Full path to a Battenberg rho_and_psi output file
 #' @param subclone_file Full path to a Battenberg subclones.txt output file
 #' @param gender Specify male or female
-#' @param SNP.phase.file Output file from mut_mut_phasing
-#' @param mut.phase.file Output file from mut_cn_phasing
+#' @param SNP.phase.file Output file from mut_mut_phasing, supply NA (as char) when not available
+#' @param mut.phase.file Output file from mut_cn_phasing, supply NA (as char) when not available
 #' @param output_file Name of the output file
 #' @author sd11
 #' @export
@@ -654,6 +677,8 @@ runGetDirichletProcessInfo = function(loci_file, allele_frequencies_file, cellul
 ##############################################
 # dpIn to VCF
 ##############################################
+#' DPClust input file to vcf
+#' 
 #' Transform a dirichlet input file into a VCF with the same info. It filters out mutations in areas that are not contained in the supplied genome index (fai file) or are contained in the ignore file (ign file)
 #' It takes the DP input file created by runGetDirichletProcessInfo and combines the columns with the vcf file supplied. Finally it gzips and indexes the file
 #' @param vcf_infile Filename of the VCF file to use as a base

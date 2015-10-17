@@ -2,9 +2,7 @@
 % Please edit documentation in R/preprocessing.R
 \name{mut_cn_phasing}
 \alias{mut_cn_phasing}
-\title{Run mutation to copy number phasing. This function requires the Linkage_pull.pl script in $PATH.
-Note: This function should either be run separately per chromosome and then combined with \code{\link{concat_files}}
-or on all chromsomes in one go, but then the _allHaplotypeInfo.txt Battenberg files need to be concatenated first.}
+\title{Phase mutation to SNP/copy number}
 \usage{
 mut_cn_phasing(loci_file, phased_file, hap_file, bam_file, bai_file, outfile,
   max_distance)

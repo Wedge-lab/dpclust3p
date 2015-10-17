@@ -15,19 +15,23 @@ vcf_file = toString(args[3]) # Full path to the vcf file with SNV calls. All cal
 rho_and_psi_file = toString(args[4]) # Full path to a rho_and_psi output file from Battenberg
 subclones_file = toString(args[5]) # Full path to the subclones output file from Battenberg
 sex = toString(args[6]) # Specify male or female
-output_dir = toString(args[7]) # Full path to where the output must be written
+output_dir = toString(args[7]) # Full path to where the output should be written
 fai_file = toString(args[8]) # Full path to the reference genome index file used for this sample
 ign_file = toString(args[9]) # Full path to simple list of chromosome names to ignore (must contain at least Y and MT)
 
-# Define various files
-loci_file = paste(output_dir, "/", samplename, "_loci.txt", sep="")
-allelecounts_file = paste(output_dir, "/", samplename, "_alleleFrequencies.txt", sep="")
+library(dpclust3p)
+
+# Define the final output file
 dpoutput_file = paste(output_dir, "/", samplename, "_allDirichletProcessInfo.txt", sep="")
 
-# Dump loci - this function can take multiple vcf files when multiple samples from same donor
-vcf2loci(vcf_file=vcf_file, fai_file=fai_file, ign_file=ign_file, loci_file=loci_file)
+# Define various temp files
+loci_file = paste(output_dir, "/", samplename, "_loci.txt", sep="")
+allelecounts_file = paste(output_dir, "/", samplename, "_alleleFrequencies.txt", sep="")
 
-# Count alleles
+# Dump loci - this function can take multiple vcf files when multiple samples from same donor
+vcf2loci(vcf_file=vcf_file, fai_file=fai_file, ign_file=ign_file, outfile=loci_file)
+
+# Fetch allele counts
 alleleCount(locifile=loci_file, bam=bam_file, outfile=allelecounts_file, min_baq=20, min_maq=35)
 
 # Create dpIn file
@@ -36,6 +40,6 @@ runGetDirichletProcessInfo(loci_file=loci_file,
                            cellularity_file=rho_and_psi_file, 
                            subclone_file=subclones_file, 
                            gender=sex, 
-                           SNP.phase.file=NA, 
-                           mut.phase.file=NA, 
+                           SNP.phase.file="NA", 
+                           mut.phase.file="NA", 
                            output_file=dpoutput_file)

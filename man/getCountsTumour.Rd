@@ -2,7 +2,7 @@
 % Please edit documentation in R/preprocessing.R
 \name{getCountsTumour}
 \alias{getCountsTumour}
-\title{Returns an allele counts table for the tumour sample}
+\title{Dump allele counts from vcf for tumour}
 \usage{
 getCountsTumour(v, centre = "sanger")
 }

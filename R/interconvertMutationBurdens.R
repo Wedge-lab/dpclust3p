@@ -1,3 +1,5 @@
+#' Mutation burden to mutation copy number
+#' 
 #' Function to convert mutation burdens into mutation copy number
 #' @param burden A vector containing mutation burdens
 #' @param totalCopyNumber A vector with total tumour copynumber
@@ -12,6 +14,8 @@ mutationBurdenToMutationCopyNumber = function(burden, totalCopyNumber, cellulari
   return(mutCopyNumber)
 }
 
+#' Mutation copy number to mutation burden
+#' 
 #' Function to convert mutation copy number to mutation burden
 #' @param copyNumber A vector containing mutation copy number
 #' @param totalCopyNumber A vector with total tumour copynumber

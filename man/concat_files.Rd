@@ -2,8 +2,7 @@
 % Please edit documentation in R/preprocessing.R
 \name{concat_files}
 \alias{concat_files}
-\title{Convenience function to concatenate a series of files specified in a file of file names.
-This function assumes all files have the same layout.}
+\title{Concatenate split files}
 \usage{
 concat_files(fofn, inputdir, outfile, haveHeader)
 }

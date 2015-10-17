@@ -2,8 +2,7 @@
 % Please edit documentation in R/preprocessing.R
 \name{parseFai}
 \alias{parseFai}
-\title{Convenience function that parses a reference genome index as generated
-by samtools index}
+\title{Parse genome index}
 \usage{
 parseFai(fai_file)
 }

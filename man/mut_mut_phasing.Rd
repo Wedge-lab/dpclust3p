@@ -2,7 +2,7 @@
 % Please edit documentation in R/preprocessing.R
 \name{mut_mut_phasing}
 \alias{mut_mut_phasing}
-\title{Run mutation to mutation phasing. This function requires the Linkage_pull.pl script in $PATH.}
+\title{Phase mutation to mutation}
 \usage{
 mut_mut_phasing(loci_file, phased_file, bam_file, bai_file, max_distance)
 }

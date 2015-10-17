@@ -2,8 +2,7 @@
 % Please edit documentation in R/preprocessing.R
 \name{dpIn2vcf}
 \alias{dpIn2vcf}
-\title{Transform a dirichlet input file into a VCF with the same info. It filters out mutations in areas that are not contained in the supplied genome index (fai file) or are contained in the ignore file (ign file)
-It takes the DP input file created by runGetDirichletProcessInfo and combines the columns with the vcf file supplied. Finally it gzips and indexes the file}
+\title{DPClust input file to vcf}
 \usage{
 dpIn2vcf(vcf_infile, dpIn_file, vcf_outfile, fai_file, ign_file,
   genome = "hg19")

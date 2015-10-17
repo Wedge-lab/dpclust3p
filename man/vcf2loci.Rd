@@ -2,7 +2,7 @@
 % Please edit documentation in R/preprocessing.R
 \name{vcf2loci}
 \alias{vcf2loci}
-\title{Function that dumps the loci of snvs from a series of vcf files into a single loci file}
+\title{Transform vcf to loci file}
 \usage{
 vcf2loci(vcf_files, fai_file, ign_file, outfile)
 }

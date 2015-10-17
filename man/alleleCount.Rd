@@ -2,7 +2,7 @@
 % Please edit documentation in R/preprocessing.R
 \name{alleleCount}
 \alias{alleleCount}
-\title{Count the alleles for specified locations in the loci file. Expects alleleCount binary in $PATH}
+\title{Run alleleCount}
 \usage{
 alleleCount(locifile, bam, outfile, min_baq = 20, min_maq = 35)
 }

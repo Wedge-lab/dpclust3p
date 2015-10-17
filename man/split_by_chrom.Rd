@@ -2,9 +2,7 @@
 % Please edit documentation in R/preprocessing.R
 \name{split_by_chrom}
 \alias{split_by_chrom}
-\title{Convenience function to split an input file per chromosome. All it requires is that
-the infile has as first column chromosome specification. The output files will be named
-outdir/prefixCHROMNUMBERpostfix}
+\title{Split a file per chromosome}
 \usage{
 split_by_chrom(infile, prefix, postfix, outdir, chrom_file)
 }

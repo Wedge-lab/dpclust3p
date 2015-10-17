@@ -2,8 +2,7 @@
 % Please edit documentation in R/preprocessing.R
 \name{runGetDirichletProcessInfo}
 \alias{runGetDirichletProcessInfo}
-\title{Function that takes allele counts and a copy number profile to estimate mutation copy number,
-cancer cell fraction and multiplicity for each point mutation.}
+\title{Create the DPClust input file}
 \usage{
 runGetDirichletProcessInfo(loci_file, allele_frequencies_file, cellularity_file,
   subclone_file, gender, SNP.phase.file, mut.phase.file, output_file)
@@ -19,9 +18,9 @@ runGetDirichletProcessInfo(loci_file, allele_frequencies_file, cellularity_file,
 
 \item{gender}{Specify male or female}
 
-\item{SNP.phase.file}{Output file from mut_mut_phasing}
+\item{SNP.phase.file}{Output file from mut_mut_phasing, supply NA (as char) when not available}
 
-\item{mut.phase.file}{Output file from mut_cn_phasing}
+\item{mut.phase.file}{Output file from mut_cn_phasing, supply NA (as char) when not available}
 
 \item{output_file}{Name of the output file}
 }

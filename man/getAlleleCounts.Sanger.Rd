@@ -2,7 +2,7 @@
 % Please edit documentation in R/preprocessing.R
 \name{getAlleleCounts.Sanger}
 \alias{getAlleleCounts.Sanger}
-\title{Helper function that dumps the allele counts from a Sanger pipeline VCF file}
+\title{Dump allele counts from Sanger pipeline vcf}
 \usage{
 getAlleleCounts.Sanger(v, sample_col)
 }

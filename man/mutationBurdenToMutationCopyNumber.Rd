@@ -2,7 +2,7 @@
 % Please edit documentation in R/interconvertMutationBurdens.R
 \name{mutationBurdenToMutationCopyNumber}
 \alias{mutationBurdenToMutationCopyNumber}
-\title{Function to convert mutation burdens into mutation copy number}
+\title{Mutation burden to mutation copy number}
 \usage{
 mutationBurdenToMutationCopyNumber(burden, totalCopyNumber, cellularity,
   normalCopyNumber = rep(2, length(burden)))

@@ -2,7 +2,7 @@
 % Please edit documentation in R/preprocessing.R
 \name{getCountsNormal}
 \alias{getCountsNormal}
-\title{Returns an allele counts table for the normal sample}
+\title{Dump allele counts from vcf for normal}
 \usage{
 getCountsNormal(v, centre = "sanger")
 }
