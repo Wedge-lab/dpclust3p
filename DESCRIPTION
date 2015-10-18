@@ -15,4 +15,6 @@ Depends:
     VariantAnnotation,
     GenomicRanges,
     IRanges,
-    S4Vectors
+    S4Vectors,
+    ggplot2,
+    reshape2

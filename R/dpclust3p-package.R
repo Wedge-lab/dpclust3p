@@ -5,6 +5,8 @@
 #' @keywords package
 #' @import VariantAnnotation
 #' @import GenomicRanges
+#' @import ggplot2
+#' @importFrom reshape2 melt
 #' @importFrom IRanges IRanges
 #' @importFrom S4Vectors DataFrame
 NA
