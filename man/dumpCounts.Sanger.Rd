@@ -2,10 +2,10 @@
 % Please edit documentation in R/preprocessing.R
 \name{dumpCounts.Sanger}
 \alias{dumpCounts.Sanger}
-\title{Dump allele counts from vcf - Sanger pipeline}
+\title{Dump allele counts from vcf - Sanger ICGC pancancer pipeline}
 \usage{
 dumpCounts.Sanger(vcf_infile, tumour_outfile, normal_outfile = NA,
-  refence_genome = "hg19")
+  refence_genome = "hg19", samplename = NA)
 }
 \arguments{
 \item{vcf_infile}{The vcf file to read in}
@@ -15,6 +15,8 @@ dumpCounts.Sanger(vcf_infile, tumour_outfile, normal_outfile = NA,
 \item{normal_outfile}{Optional parameter specifying where the normal output should go}
 
 \item{refence_genome}{Optional parameter specifying the reference genome build used}
+
+\item{samplename}{Optional parameter specifying the samplename to be used for matching the right column in the VCF}
 }
 \description{
 Dump allele counts stored in the sample columns of the VCF file. Output will go into a file

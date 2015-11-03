@@ -139,7 +139,7 @@ alleleCount = function(locifile, bam, outfile, min_baq=20, min_maq=35) {
   system(cmd, wait=T)
 }
 
-#' Dump allele counts from vcf - Sanger pipeline
+#' Dump allele counts from vcf - Sanger ICGC pancancer pipeline
 #'
 #' Dump allele counts stored in the sample columns of the VCF file. Output will go into a file
 #' supplied as tumour_outfile and optionally normal_outfile. It will be a fully formatted
@@ -148,13 +148,14 @@ alleleCount = function(locifile, bam, outfile, min_baq=20, min_maq=35) {
 #' @param tumour_outfile File to save the tumour counts to
 #' @param normal_outfile Optional parameter specifying where the normal output should go
 #' @param refence_genome Optional parameter specifying the reference genome build used
+#' @param samplename Optional parameter specifying the samplename to be used for matching the right column in the VCF
 #' @author sd11
 #' @export
-dumpCounts.Sanger = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19") {
-  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="sanger", normal_outfile=normal_outfile, refence_genome=refence_genome)
+dumpCounts.Sanger = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19", samplename=NA) {
+  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="sanger", normal_outfile=normal_outfile, refence_genome=refence_genome, samplename=samplename)
 }
 
-#' Dump allele counts from vcf - DKFZ pipeline
+#' Dump allele counts from vcf - DKFZ ICGC pancancer pipeline
 #'
 #' Dump allele counts stored in the sample columns of the VCF file. Output will go into a file
 #' supplied as tumour_outfile and optionally normal_outfile. It will be a fully formatted
@@ -163,18 +164,43 @@ dumpCounts.Sanger = function(vcf_infile, tumour_outfile, normal_outfile=NA, refe
 #' @param tumour_outfile File to save the tumour counts to
 #' @param normal_outfile Optional parameter specifying where the normal output should go
 #' @param refence_genome Optional parameter specifying the reference genome build used
+#' @param samplename Optional parameter specifying the samplename to be used for matching the right column in the VCF
 #' @author sd11
 #' @export
-dumpCounts.DKFZ = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19") {
-  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="dkfz", normal_outfile=normal_outfile, refence_genome=refence_genome)
+dumpCounts.DKFZ = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19", samplename=NA) {
+  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="dkfz", normal_outfile=normal_outfile, refence_genome=refence_genome, samplename=samplename)
 }
 
-dumpCounts.Broad = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19") {
-  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="broad", normal_outfile=normal_outfile, refence_genome=refence_genome)
+#' Dump allele counts from vcf - Broad ICGC pancancer pipeline
+#'
+#' Dump allele counts stored in the sample columns of the VCF file. Output will go into a file
+#' supplied as tumour_outfile and optionally normal_outfile. It will be a fully formatted
+#' allele counts file as returned by alleleCounter.
+#' @param vcf_infile The vcf file to read in
+#' @param tumour_outfile File to save the tumour counts to
+#' @param normal_outfile Optional parameter specifying where the normal output should go
+#' @param refence_genome Optional parameter specifying the reference genome build used
+#' @param samplename Optional parameter specifying the samplename to be used for matching the right column in the VCF
+#' @author sd11
+#' @export
+dumpCounts.Broad = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19", samplename=NA) {
+  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="broad", normal_outfile=normal_outfile, refence_genome=refence_genome, samplename=samplename)
 }
 
-dumpCounts.Muse = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19") {
-  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="muse", normal_outfile=normal_outfile, refence_genome=refence_genome)
+#' Dump allele counts from vcf - MuSE ICGC pancancer pipeline
+#'
+#' Dump allele counts stored in the sample columns of the VCF file. Output will go into a file
+#' supplied as tumour_outfile and optionally normal_outfile. It will be a fully formatted
+#' allele counts file as returned by alleleCounter.
+#' @param vcf_infile The vcf file to read in
+#' @param tumour_outfile File to save the tumour counts to
+#' @param normal_outfile Optional parameter specifying where the normal output should go
+#' @param refence_genome Optional parameter specifying the reference genome build used
+#' @param samplename Optional parameter specifying the samplename to be used for matching the right column in the VCF
+#' @author sd11
+#' @export
+dumpCounts.Muse = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19", samplename=NA) {
+  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="muse", normal_outfile=normal_outfile, refence_genome=refence_genome, samplename=samplename)
 }
 
 #' Dump allele counts from VCF
@@ -182,7 +208,7 @@ dumpCounts.Muse = function(vcf_infile, tumour_outfile, normal_outfile=NA, refenc
 #' This function implements all the steps required for dumping counts from VCF
 #' as supplied by the ICGC pancancer pipelines. 
 #' @noRd
-dumpCountsFromVcf = function(vcf_infile, tumour_outfile, centre, normal_outfile=NA, refence_genome="hg19") {
+dumpCountsFromVcf = function(vcf_infile, tumour_outfile, centre, normal_outfile=NA, refence_genome="hg19", samplename=NA) {
   # Helper function for writing the output  
   write.output = function(output, output_file) {
     write.table(output, file=output_file, col.names=T, quote=F, row.names=F, sep="\t")
@@ -190,13 +216,13 @@ dumpCountsFromVcf = function(vcf_infile, tumour_outfile, centre, normal_outfile=
   
   # Read in the vcf and dump the tumour counts in the right format
   v = VariantAnnotation::readVcf(vcf_infile, refence_genome)
-  tumour = getCountsTumour(v, centre=centre)
+  tumour = getCountsTumour(v, centre=centre, samplename=samplename)
   tumour = formatOutput(tumour, v)
   write.output(tumour, tumour_outfile)
   
   # Optionally dump the normal counts in the right format
   if (!is.na(normal_outfile)) {
-    normal = getCountsNormal(v, centre=centre)
+    normal = getCountsNormal(v, centre=centre, samplename=samplename)
     normal = formatOutput(normal, v)
     write.output(normal, normal_outfile)
   }
@@ -218,11 +244,19 @@ formatOutput = function(counts_table, v) {
 #' @return An array with 4 columns: Counts for A, C, G, T
 #' @author sd11
 #' @noRd
-getCountsNormal = function(v, centre="sanger") {
+getCountsNormal = function(v, centre="sanger", samplename=NA) {
   if (centre=="sanger") {
     return(getAlleleCounts.Sanger(v, 1))
   } else if(centre=="dkfz") {
-    return(getAlleleCounts.DKFZ(v, 1)) # colname CONTROL
+    sample_col = which(colnames(VariantAnnotation::geno(v)$DP4) == "CONTROL")
+    return(getAlleleCounts.DKFZ(v, sample_col))
+  } else if (centre=="muse") {
+    # Assuming the tumour name is provided
+    sample_col = which(colnames(VariantAnnotation::geno(v)$AD) != samplename)
+    return (getAlleleCounts.MuSE(v, sample_col))
+  } else if (centre=="broad") {
+    warning("The Broad ICGC pipeline does not report allele counts for the matched normal")
+    q(save="no", status=1)
   } else {
     warning(paste("Supplied centre not supported:", centre))
     q(save="no", status=1)
@@ -237,11 +271,17 @@ getCountsNormal = function(v, centre="sanger") {
 #' @return An array with 4 columns: Counts for A, C, G, T
 #' @author sd11
 #' @noRd
-getCountsTumour = function(v, centre="sanger") {
+getCountsTumour = function(v, centre="sanger", samplename=NA) {
   if (centre=="sanger") {
     return(getAlleleCounts.Sanger(v, 2))
-  } else if(centre=="dkfz") {
-    return(getAlleleCounts.DKFZ(v, 2)) # colname TUMOR
+  } else if (centre=="dkfz") {
+    sample_col = which(colnames(VariantAnnotation::geno(v)$DP4) == "TUMOR")
+    return(getAlleleCounts.DKFZ(v, sample_col))
+  } else if (centre=="muse") {
+    sample_col = which(colnames(VariantAnnotation::geno(v)$AD) == samplename)
+    return (getAlleleCounts.MuSE(v, sample_col))
+  } else if (centre=="broad") {
+    getAlleleCounts.Broad(v, 1)
   } else {
     warning(paste("Supplied centre not supported:", centre))
     q(save="no", status=1)
@@ -295,6 +335,79 @@ getAlleleCounts.DKFZ = function(v, sample_col) {
   nucleo.index = match(allele.ref, nucleotides)
   for (i in 1:nrow(output)) {
     output[i,nucleo.index[i]] = counts.ref[i]
+  }
+  return(output)
+}
+
+#' Dump allele counts from the MuSE pipeline
+#' 
+#' Helper function that takes a sample column and fetches allele counts. As the MuSE pipeline does not
+#' provide counts for each base, but just the alt and reference, we will provide just those and the
+#' other bases with 0s.
+#' 
+#' Note: If there are multiple ALT alleles this function will only take the first mentioned! 
+#' Note2: This function assumes there are only two columns with read counts. The format allows for more
+#' @param v The vcf file
+#' @param sample_col The column in which the counts are. If it's the first sample mentioned in the vcf this would be sample_col 1
+#' @return An array with 4 columns: Counts for A, C, G, T
+#' @author sd11
+#' @noRd
+getAlleleCounts.MuSE = function(v, sample_col) {
+  if (length(colnames(VariantAnnotation::geno(v)$AD)) > 2) {
+    warning("In getAlleleCounts.MuSE: Assuming 2 columns with read counts, but found more. This is not supported")
+    q(save="no", status=1)
+  }
+  # Fetch the counts, assuming there are only two, one for the ref (column 1) and one for alt (column 2)
+  counts = matrix(unlist(VariantAnnotation::geno(v)$AD[,sample_col]), ncol=2, byrow=T)
+  allele.ref = as.character(VariantAnnotation::ref(v))
+  allele.alt = unlist(lapply(VariantAnnotation::alt(v), function(x) { as.character(x[[1]]) }))
+  
+  output = array(0, c(length(allele.ref), 4))
+  nucleotides = c("A", "C", "G", "T")
+  # Propagate the alt allele counts
+  nucleo.index = match(allele.alt, nucleotides)
+  for (i in 1:nrow(output)) {
+    output[i,nucleo.index[i]] = counts[i,1]
+  }
+  
+  # Propagate the reference allele counts
+  nucleo.index = match(allele.ref, nucleotides)
+  for (i in 1:nrow(output)) {
+    output[i,nucleo.index[i]] = counts[i,2]
+  }
+  return(output)
+}
+
+#' Dump allele counts from the Broad pipeline
+#' 
+#' Helper function that takes a sample column and fetches allele counts. As the Broad pipeline does not
+#' provide counts for each base, but just the alt and reference, we will provide just those and the
+#' other bases with 0s.
+#' 
+#' Note: If there are multiple ALT alleles this function will only take the first mentioned! 
+#' @param v The vcf file
+#' @param sample_col The column in which the counts are. If it's the first sample mentioned in the vcf this would be sample_col 1
+#' @return An array with 4 columns: Counts for A, C, G, T
+#' @author sd11
+#' @noRd
+getAlleleCounts.Broad = function(v, sample_col) {
+  count.ref = as.numeric(unlist(VariantAnnotation::geno(v)$ref_count))
+  count.alt = as.numeric(unlist(VariantAnnotation::geno(v)$alt_count))
+  allele.ref = as.character(VariantAnnotation::ref(v))
+  allele.alt = unlist(lapply(VariantAnnotation::alt(v), function(x) { as.character(x[[1]]) }))
+  
+  output = array(0, c(length(allele.ref), 4))
+  nucleotides = c("A", "C", "G", "T")
+  # Propagate the alt allele counts
+  nucleo.index = match(allele.alt, nucleotides)
+  for (i in 1:nrow(output)) {
+    output[i,nucleo.index[i]] = count.alt[i]
+  }
+  
+  # Propagate the reference allele counts
+  nucleo.index = match(allele.ref, nucleotides)
+  for (i in 1:nrow(output)) {
+    output[i,nucleo.index[i]] = count.ref[i]
   }
   return(output)
 }
