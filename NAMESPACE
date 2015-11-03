@@ -2,8 +2,12 @@
 
 export(alleleCount)
 export(concat_files)
+export(createHistFacetPlot)
+export(createPng)
 export(dpIn2vcf)
+export(dumpCounts.DKFZ)
 export(dumpCounts.Sanger)
+export(meltFacetPlotData)
 export(mut_cn_phasing)
 export(mut_mut_phasing)
 export(mutationBurdenToMutationCopyNumber)
