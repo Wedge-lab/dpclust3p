@@ -642,6 +642,80 @@ mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, 
 }
 
 ############################################
+# Copy number convert scripts
+############################################
+
+#' Transform ASCAT output into Battenberg
+#' 
+#' This function takes the ascat segments, acf and ploidy files to create
+#' a minimum Battenberg subclones and rho_and_psi file for use in pre-processing.
+#' These files only contain the essentials required by this package.
+#' @param outfile.prefix String prefix for the output files. Internally _subclones.txt and _rho_and_psi.txt will be added.
+#' @param segments.file String pointing to a segments.txt ASCAT output file
+#' @param acf.file String pointing to a acf.txt ASCAT output file
+#' @param ploidy.file String pointing to a ploidy.txt ASCAT output file
+#' @author sd11
+#' @export
+ascatToBattenberg = function(outfile.prefix, segments.file, acf.file, ploidy.file) {
+  # Construct a minimum Battenberg file with the copy number segments
+  d = read.table(segments.file, header=T, stringsAsFactors=F)
+  subclones = d[,2:6]
+  colnames(subclones)[4] = "nMaj1_A"
+  colnames(subclones)[5] = "nMin1_A"
+  subclones$frac1_A = 1
+  subclones$nMaj2_A = NA
+  subclones$nMin2_A = NA
+  subclones$frac2_A = NA
+  write.table(subclones, paste(outfile.prefix, "_subclones.txt", sep=""), quote=F, sep="\t")
+  
+  # Now construct a minimum rho/psi file
+  cellularity = read.table(acf.file, header=T)[1,1]
+  ploidy = read.table(ploidy.file, header=T)[1,1]
+  
+  purity_ploidy = array(NA, c(3,5))
+  colnames(purity_ploidy) = c("rho", "psi", "ploidy", "distance", "is.best")
+  rownames(purity_ploidy) = c("ASCAT", "FRAC_GENOME", "REF_SEG")
+  purity_ploidy["FRAC_GENOME", "rho"] = cellularity
+  purity_ploidy["FRAC_GENOME", "psi"] = ploidy
+  write.table(purity_ploidy, paste(outfile.prefix, "_rho_and_psi.txt", sep=""), quote=F, sep="\t")
+}
+
+#' Transform ASCAT NGS output into Battenberg
+#' 
+#' This function takes the ascat copynumber.caveman.csv and samplestatistics files to create
+#' a minimum Battenberg subclones and rho_and_psi file for use in pre-processing.
+#' These files only contain the essentials required by this package.
+#' @param outfile.prefix String prefix for the output files. Internally _subclones.txt and _rho_and_psi.txt will be added.
+#' @param copynumber.caveman.file String pointing to an ASCAT NGS copynumber.caveman.csv file
+#' @param samplestatistics.file String point to an ASCAT NGS samplestatistics.csv file
+#' @author sd11
+#' @export
+ascatNgsToBattenberg = function(outfile.prefix, copynumber.caveman.file, samplestatistics.file) {
+  # Construct a minimum Battenberg file with the copy number segments
+  d = read.table(copynumber.caveman.file, sep=",", header=F, stringsAsFactors=F)
+  colnames(d) = c("count", "chr", "startpos", "endpos", "normal_total", "normal_minor", "tumour_total", "tumour_minor")
+  subclones = d[,2:4]
+  subclones$nMaj1_A = d$tumour_total-d$tumour_minor
+  subclones$nMin1_A = d$tumour_minor
+  subclones$frac1_A = 1
+  subclones$nMaj2_A = NA
+  subclones$nMin2_A = NA
+  subclones$frac2_A = NA
+  write.table(subclones, paste(outfile.prefix, "_subclones.txt", sep=""), quote=F, sep="\t")
+  
+  # Now construct a minimum rho/psi file
+  samplestats = read.table(samplestatistics.file, header=F, stringsAsFactors=F)
+  
+  purity_ploidy = array(NA, c(3,5))
+  colnames(purity_ploidy) = c("rho", "psi", "ploidy", "distance", "is.best")
+  rownames(purity_ploidy) = c("ASCAT", "FRAC_GENOME", "REF_SEG")
+  purity_ploidy["FRAC_GENOME", "rho"] = samplestats[samplestats$V1=="rho",2]
+  purity_ploidy["FRAC_GENOME", "psi"] = samplestats[samplestats$V1=="Ploidy",2]
+  write.table(purity_ploidy, paste(outfile.prefix, "_rho_and_psi.txt", sep=""), quote=F, sep="\t")
+}
+
+
+############################################
 # Combine all the steps into a DP input file
 ############################################
 #' Main function that creates the DP input file. A higher level function should be called by users
