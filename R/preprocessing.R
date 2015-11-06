@@ -370,7 +370,7 @@ getAlleleCounts.MuSE = function(v, sample_col) {
 	counts[i,] = snv.counts[select_base] 
   }
 
-  allele.ref = as.character(VariantAnnotation::ref(v))[single_nucleotide]
+  allele.ref = as.character(VariantAnnotation::ref(v))
   
   output = array(0, c(length(allele.ref), 4))
   nucleotides = c("A", "C", "G", "T")
