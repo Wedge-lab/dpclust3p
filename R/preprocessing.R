@@ -357,10 +357,20 @@ getAlleleCounts.MuSE = function(v, sample_col) {
     warning("In getAlleleCounts.MuSE: Assuming 2 columns with read counts, but found more. This is not supported")
     q(save="no", status=1)
   }
-  # Fetch the counts, assuming there are only two, one for the ref (column 1) and one for alt (column 2)
-  counts = matrix(unlist(VariantAnnotation::geno(v)$AD[,sample_col]), ncol=2, byrow=T)
-  allele.ref = as.character(VariantAnnotation::ref(v))
-  allele.alt = unlist(lapply(VariantAnnotation::alt(v), function(x) { as.character(x[[1]]) }))
+
+  # An SNV can be represented by more than 1 alt alleles, here we pick the alt allele with the highest read count
+  num.snvs = nrow(VariantAnnotation::geno(v)$AD)
+  counts = array(NA, c(num.snvs, 2))
+  allele.alt = array(NA, num.snvs)
+  for (i in 1:num.snvs) {
+	snv.counts = unlist(VariantAnnotation::geno(v)$AD[i,sample_col])
+	select_base = which.max(snv.counts[2:length(snv.counts)])
+	allele.alt[i] = as.character(VariantAnnotation::alt(v)[[i]][select_base])
+	select_base = select_base+1 # The reference is the first base for which read counts are mentioned
+	counts[i,] = snv.counts[select_base] 
+  }
+
+  allele.ref = as.character(VariantAnnotation::ref(v))[single_nucleotide]
   
   output = array(0, c(length(allele.ref), 4))
   nucleotides = c("A", "C", "G", "T")
