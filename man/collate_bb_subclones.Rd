@@ -7,14 +7,14 @@ then it calculates the total CN and a weighted ploidy before it subsets the inpu
 by columns: "chr", "startpos", "endpos", "nMaj1_A", "nMin1_A", "frac1_A",
 "nMaj2_A", "nMin2_A", "frac2_A", "SDfrac_A".}
 \usage{
-collate_bb_subclones(samplename, bb_subclones_file, is_male, outfile)
+collate_bb_subclones(samplename, bb_subclones_file, gender, outfile)
 }
 \arguments{
 \item{samplename,}{A String containing the samplename}
 
 \item{bb_subclones_file,}{A String containing the full path to a Battenberg subclones.txt file}
 
-\item{is_male,}{Boolean that should be TRUE if this sample is male, FALSE otherwise}
+\item{gender,}{Specify either the string male or female}
 
 \item{outfile,}{A String with the full path to where the output should be written}
 }

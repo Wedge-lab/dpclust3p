@@ -3,6 +3,7 @@
 export(alleleCount)
 export(ascatNgsToBattenberg)
 export(ascatToBattenberg)
+export(collate_bb_subclones)
 export(concat_files)
 export(createHistFacetPlot)
 export(createPng)

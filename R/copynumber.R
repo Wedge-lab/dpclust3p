@@ -23,10 +23,20 @@
 #' 
 #' @param samplename, A String containing the samplename
 #' @param bb_subclones_file, A String containing the full path to a Battenberg subclones.txt file
-#' @param is_male, Boolean that should be TRUE if this sample is male, FALSE otherwise
+#' @param gender, Specify either the string male or female
 #' @param outfile, A String with the full path to where the output should be written
 #' @author tjm
-collate_bb_subclones = function(samplename, bb_subclones_file, is_male, outfile) {
+#' @export
+collate_bb_subclones = function(samplename, bb_subclones_file, gender, outfile) {
+  
+  if(gender == 'male' | gender == 'Male') {
+    is_male = T
+  } else if(gender == 'female' | gender == 'Female') {
+    is_male = F
+  } else {
+    stop("Unknown gender supplied, exit.")
+  }
+  
   allsegs = NULL
   cndata = read.table(bb_subclones_file, header=T, stringsAsFactors=F)
   cndata = cbind(samplename, cndata)
