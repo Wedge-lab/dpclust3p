@@ -364,10 +364,11 @@ getAlleleCounts.MuSE = function(v, sample_col) {
   allele.alt = array(NA, num.snvs)
   for (i in 1:num.snvs) {
 	snv.counts = unlist(VariantAnnotation::geno(v)$AD[i,sample_col])
+  	counts[i,1] = snv.counts[1] # The reference is the first base for which read counts are mentioned
 	select_base = which.max(snv.counts[2:length(snv.counts)])
 	allele.alt[i] = as.character(VariantAnnotation::alt(v)[[i]][select_base])
 	select_base = select_base+1 # The reference is the first base for which read counts are mentioned
-	counts[i,] = snv.counts[select_base] 
+	counts[i,2] = snv.counts[select_base] 
   }
 
   allele.ref = as.character(VariantAnnotation::ref(v))
