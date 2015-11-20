@@ -60,12 +60,15 @@ collate_bb_subclones = function(samplename, bb_subclones_file, gender, outfile) 
   # Ploidy weighted by segment size
   ploidy = round(sum(cndataweighted)/2)*2
   
-  # Collating logical arguments for LOH, Amp, HD etc
-  allsegs = data.frame(cndata[,1:4], cndata[,9:15], ploidy)
-  names(allsegs) = c("Tumour_Name","chr", "startpos",
-                     "endpos", "nMaj1_A", "nMin1_A",
-                     "frac1_A", "nMaj2_A", "nMin2_A", "frac2_A",
-                     "SDfrac_A", "tumour_ploidy")
+  # If there is no column with a tumour name, add it in temporarily
+  if (! "Tumour_Name" %in% colnames(cndata)) {
+    cndata = data.frame(Tumour_Name=samplename, cndata)
+  }
+  
+  allsegs = data.frame(cndata[, c("Tumour_Name", "chr", "startpos", 
+                                  "endpos", "nMaj1_A", "nMin1_A", 
+                                  "frac1_A", "nMaj2_A", "nMin2_A", 
+                                  "frac2_A", "SDfrac_A")], tumour_ploidy=ploidy)
   
   # Now classify all segments into a category
   tot = dim(allsegs)[1]

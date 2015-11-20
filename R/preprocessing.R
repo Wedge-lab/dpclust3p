@@ -676,6 +676,7 @@ ascatToBattenberg = function(outfile.prefix, segments.file, acf.file, ploidy.fil
   subclones$nMaj2_A = NA
   subclones$nMin2_A = NA
   subclones$frac2_A = NA
+  subclones$SDfrac_A = NA
   write.table(subclones, paste(outfile.prefix, "_subclones.txt", sep=""), quote=F, sep="\t")
   
   # Now construct a minimum rho/psi file
