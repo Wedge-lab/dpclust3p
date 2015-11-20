@@ -375,14 +375,13 @@ getAlleleCounts.MuSE = function(v, sample_col) {
   
   output = array(0, c(length(allele.ref), 4))
   nucleotides = c("A", "C", "G", "T")
-  # Propagate the alt allele counts
-  nucleo.index = match(allele.alt, nucleotides)
+  # Propagate the reference allele counts
+  nucleo.index = match(allele.ref, nucleotides)
   for (i in 1:nrow(output)) {
     output[i,nucleo.index[i]] = counts[i,1]
   }
-  
-  # Propagate the reference allele counts
-  nucleo.index = match(allele.ref, nucleotides)
+  # Propagate the alt allele counts
+  nucleo.index = match(allele.alt, nucleotides)
   for (i in 1:nrow(output)) {
     output[i,nucleo.index[i]] = counts[i,2]
   }
