@@ -117,6 +117,60 @@ vcf2loci = function(vcf_files, fai_file, ign_file, outfile) {
 }
 
 ############################################
+# Mutation signatures
+############################################
+
+#' Obtain tri-nucleotide context. It reads in the supplied loci file and querries
+#' the provided reference genome fasta for the context. Finally it writes out the
+#' loci with annotated context.
+#' @param loci_file A 4 column loci file with chrom, position, reference allele and alt allele
+#' @param outfile Where to write the output
+#' @param ref_genome Full path to a reference genome Fasta file
+#' @author sd11
+#' @export
+#' "/lustre/scratch110/sanger/sd11/Documents/GenomeFiles/refs_icgc_pancan/genome.fa"
+getTrinucleotideContext = function(loci_file, outfile, ref_genome) {
+  loci = read.table(loci_file, sep='\t', header=F, stringsAsFactors=F)
+  loci.g = GenomicRanges::GRanges(seqnames=loci[,1], ranges=IRanges::IRanges(loci[,2], loci[,2]))
+  r = Rsamtools::scanFa(file=ref_genome, resize(GenomicRanges::granges(loci.g), 3, fix="center"))
+  write.table(cbind(loci, as.data.frame(r)), file=outfile, row.names=F, col.names=F, quote=F, sep="\t")
+}
+
+# #' Checks each tri-nucleotide context whether its CAG or CTG
+# #' @param vector_of_trinucleotides A vector containing the base to check and its immediate neighbors
+# #' @author sd11
+# #' @export
+# isDeaminase = function(vector_of_trinucleotides) {
+#   return(grepl("(CAG)|(CTG)|(GAC)|(GTC)", vector_of_trinucleotides))
+# }
+
+#' Filter a with tri-nucleotide context annotated list of loci for a particular signature
+#' supplied as a regex like so: (CAG)|(CTG)|(GAC)|(GTC).
+#' @param signature_anno_loci_file Filepath to a with tri-nucleotide context annotated loci
+#' @param signature_regex A regex that captures the signature to keep.
+#' @param outfile Filepath to where to store the output.
+#' @param trinucleotide_column Integer representing the column within the input file that contains the context
+#' @author sd11
+#' @export
+filterForSignature = function(signature_anno_loci_file, signature_regex, outfile, trinucleotide_column=5) {
+  signature_anno_loci = read.table(signature_anno_loci_file, sep='\t', header=F, stringsAsFactors=F)
+  signature_anno_loci_filt = signature_anno_loci[grepl(signature_regex, signature_anno_loci[,trinucleotide_column]), ]
+  write.table(signature_anno_loci_filt, file=outfile, row.names=F, col.names=F, quote=F, sep="\t")
+}
+
+#' Convenience function that filters a with tri-nucleotide context annotated list of loci for 
+#' cytosine deaminase signature.
+#' @param signature_anno_loci_file Filepath to a with tri-nucleotide context annotated loci
+#' @param outfile Filepath to where to store the output.
+#' @param trinucleotide_column Integer representing the column within the input file that contains the context
+#' @author sd11
+#' @export
+filterForDeaminase = function(signature_anno_loci_file, outfile, trinucleotide_column=5) {
+  filterForSignature(signature_anno_loci_file, "(CAG)|(CTG)|(GAC)|(GTC)", outfile, trinucleotide_column=5)
+}
+
+
+############################################
 # Allele counting
 ############################################
 #' Run alleleCount
