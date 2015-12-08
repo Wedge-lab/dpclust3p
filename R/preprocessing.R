@@ -128,7 +128,6 @@ vcf2loci = function(vcf_files, fai_file, ign_file, outfile) {
 #' @param ref_genome Full path to a reference genome Fasta file
 #' @author sd11
 #' @export
-#' "/lustre/scratch110/sanger/sd11/Documents/GenomeFiles/refs_icgc_pancan/genome.fa"
 getTrinucleotideContext = function(loci_file, outfile, ref_genome) {
   loci = read.table(loci_file, sep='\t', header=F, stringsAsFactors=F)
   loci.g = GenomicRanges::GRanges(seqnames=loci[,1], ranges=IRanges::IRanges(loci[,2], loci[,2]))
@@ -139,7 +138,6 @@ getTrinucleotideContext = function(loci_file, outfile, ref_genome) {
 # #' Checks each tri-nucleotide context whether its CAG or CTG
 # #' @param vector_of_trinucleotides A vector containing the base to check and its immediate neighbors
 # #' @author sd11
-# #' @export
 # isDeaminase = function(vector_of_trinucleotides) {
 #   return(grepl("(CAG)|(CTG)|(GAC)|(GTC)", vector_of_trinucleotides))
 # }
