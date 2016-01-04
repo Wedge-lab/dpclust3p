@@ -1,8 +1,8 @@
 Package: dpclust3p
 Type: Package
 Title: Dirichlet Process Clustering Pre-Processing Package
-Version: 1.0.1
-Date: 2015-10-17
+Version: 1.0.2
+Date: 2016-01-04
 Author: Stefan Dentro
 Maintainer: Stefan Dentro <sd11@sanger.ac.uk>
 License: GPL-3
@@ -14,6 +14,7 @@ Description: Package that takes Battenberg copy number output and somatic point 
 Depends: 
     VariantAnnotation,
     GenomicRanges,
+    Rsamtools,
     IRanges,
     S4Vectors,
     ggplot2,

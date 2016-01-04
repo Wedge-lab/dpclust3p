@@ -3,21 +3,21 @@
 \name{filterForDeaminase}
 \alias{filterForDeaminase}
 \title{Convenience function that filters a with tri-nucleotide context annotated list of loci for
-cytosine deaminase signature.}
+cytosine deaminase signature, or C>T at CpG.}
 \usage{
-filterForDeaminase(signature_anno_loci_file, outfile,
-  trinucleotide_column = 5)
+filterForDeaminase(loci_file, outfile, trinucleotide_column = 5,
+  ref_genome = "hg19")
 }
 \arguments{
-\item{signature_anno_loci_file}{Filepath to a with tri-nucleotide context annotated loci}
-
 \item{outfile}{Filepath to where to store the output.}
 
 \item{trinucleotide_column}{Integer representing the column within the input file that contains the context}
+
+\item{signature_anno_loci_file}{Filepath to a with tri-nucleotide context annotated loci}
 }
 \description{
 Convenience function that filters a with tri-nucleotide context annotated list of loci for
-cytosine deaminase signature.
+cytosine deaminase signature, or C>T at CpG.
 }
 \author{
 sd11

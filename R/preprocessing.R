@@ -157,14 +157,16 @@ filterForSignature = function(signature_anno_loci_file, signature_regex, outfile
 }
 
 #' Convenience function that filters a with tri-nucleotide context annotated list of loci for 
-#' cytosine deaminase signature.
+#' cytosine deaminase signature, or C>T at CpG.
 #' @param signature_anno_loci_file Filepath to a with tri-nucleotide context annotated loci
 #' @param outfile Filepath to where to store the output.
 #' @param trinucleotide_column Integer representing the column within the input file that contains the context
 #' @author sd11
 #' @export
-filterForDeaminase = function(signature_anno_loci_file, outfile, trinucleotide_column=5) {
-  filterForSignature(signature_anno_loci_file, "(CAG)|(CTG)|(GAC)|(GTC)", outfile, trinucleotide_column=5)
+filterForDeaminase = function(loci_file, outfile, trinucleotide_column=5, ref_genome="hg19") {
+  signature_anno_loci_file = gsub(".txt", "_signature_anno.txt", loci_file)
+  getTrinucleotideContext(loci_file, signature_anno_loci_file, ref_genome)
+  filterForSignature(signature_anno_loci_file, "(CAG)|(CTG)|(GAC)|(GTC)", outfile, trinucleotide_column=trinucleotide_column)
 }
 
 

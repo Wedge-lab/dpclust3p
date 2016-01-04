@@ -9,4 +9,5 @@
 #' @importFrom reshape2 melt
 #' @importFrom IRanges IRanges
 #' @importFrom S4Vectors DataFrame
+#' @importFrom Rsamtools scanFa
 NA
