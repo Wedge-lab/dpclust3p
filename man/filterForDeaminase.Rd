@@ -5,13 +5,17 @@
 \title{Convenience function that filters a with tri-nucleotide context annotated list of loci for
 cytosine deaminase signature, or C>T at CpG.}
 \usage{
-filterForDeaminase(loci_file, outfile, trinucleotide_column = 5,
-  ref_genome = "hg19")
+filterForDeaminase(loci_file, outfile, ref_genome, trinucleotide_column = 5,
+  alt_allele_column = 4)
 }
 \arguments{
 \item{outfile}{Filepath to where to store the output.}
 
+\item{ref_genome}{Full path to an indexed reference genome fasta file}
+
 \item{trinucleotide_column}{Integer representing the column within the input file that contains the context}
+
+\item{alt_allele_column}{The column in the annotated loci file that contains the reference base.}
 
 \item{signature_anno_loci_file}{Filepath to a with tri-nucleotide context annotated loci}
 }

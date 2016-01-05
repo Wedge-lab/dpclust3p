@@ -44,6 +44,12 @@ concat_files = function(fofn, inputdir, outfile, haveHeader) {
 split_by_chrom = function(infile, prefix, postfix, outdir, chrom_file) {
   outdir = paste(outdir, "/", sep="")
   
+  # Check if there are lines in the file, otherwise it will crash this script
+  if (file.info(infile)$size == 0) {
+    print("No lines in loci file")
+    q(save="no")
+  }
+  
   loci = read.delim(infile, stringsAsFactors=F, header=F)
   
   chroms = read.delim(chrom_file, stringsAsFactors=F, header=F)
@@ -148,26 +154,26 @@ getTrinucleotideContext = function(loci_file, outfile, ref_genome) {
 #' @param signature_regex A regex that captures the signature to keep.
 #' @param outfile Filepath to where to store the output.
 #' @param trinucleotide_column Integer representing the column within the input file that contains the context
-#' @param ref_alleles An optional vector with reference alleles to allow.
-#' @param ref_allele_column The column in the annotated loci file that contains the reference base.
+#' @param alt_alleles An optional vector with reference alleles to allow.
+#' @param alt_allele_column The column in the annotated loci file that contains the reference base.
 #' @author sd11
 #' @export
-filterForSignature = function(signature_anno_loci_file, signature_regex, outfile, trinucleotide_column=5, ref_alleles=NA, ref_allele_column=3) {
+filterForSignature = function(signature_anno_loci_file, signature_regex, outfile, trinucleotide_column=5, alt_alleles=NA, alt_allele_column=4) {
   signature_anno_loci = read.table(signature_anno_loci_file, sep='\t', header=F, stringsAsFactors=F)
   signature_anno_loci_filt = signature_anno_loci[grepl(signature_regex, signature_anno_loci[,trinucleotide_column]), ]
 
-  if (!is.na(ref_alleles)) {
+  if (!is.na(alt_alleles)) {
     regex_split = gsub("(", "", signature_regex, fixed=T)
     regex_split = gsub(")", "", regex_split, fixed=T)
     regex_split = unlist(strsplit(regex_split, "|", fixed=T))
-    selection = rep(F, nrow(signature_anno_loci))
+    selection = rep(F, nrow(signature_anno_loci_filt))
     
     # Go through all signatures and their specific reference context
     for (i in 1:length(regex_split)) {
-      ref_i = ref_alleles[i]
+      alt_i = alt_alleles[i]
       sign_i = regex_split[i]
       # Select only those mutations that have this particular context and reference
-      selection[signature_anno_loci[,trinucleotide_column]==sign_i & signature_anno_loci[,ref_allele_column]==ref_i] = T
+      selection[signature_anno_loci_filt[,trinucleotide_column]==sign_i & signature_anno_loci_filt[,alt_allele_column]==alt_i] = T
     }
     signature_anno_loci_filt = signature_anno_loci_filt[selection,]
   }
@@ -180,18 +186,18 @@ filterForSignature = function(signature_anno_loci_file, signature_regex, outfile
 #' @param outfile Filepath to where to store the output.
 #' @param ref_genome Full path to an indexed reference genome fasta file
 #' @param trinucleotide_column Integer representing the column within the input file that contains the context
-#' @param ref_allele_column The column in the annotated loci file that contains the reference base.
+#' @param alt_allele_column The column in the annotated loci file that contains the reference base.
 #' @author sd11
 #' @export
-filterForDeaminase = function(loci_file, outfile, ref_genome, trinucleotide_column=5, ref_allele_column=3) {
+filterForDeaminase = function(loci_file, outfile, ref_genome, trinucleotide_column=5, alt_allele_column=4) {
   signature_anno_loci_file = gsub(".txt", "_signature_anno.txt", loci_file)
   getTrinucleotideContext(loci_file, signature_anno_loci_file, ref_genome)
   filterForSignature(signature_anno_loci_file=signature_anno_loci_file, 
-                     signature_regex="(CAG)|(CTG)|(GAC)|(GTC)", 
+                     signature_regex="(CCG)|(GCC)|(CGG)|(GGC)", 
                      outfile=outfile, 
                      trinucleotide_column=trinucleotide_column, 
-                     ref_alleles=c("G", "C", "G", "C"), 
-                     ref_allele_column=ref_allele_column)
+                     alt_alleles=c("T", "T", "A", "A"), 
+                     alt_allele_column=alt_allele_column)
 }
 
 
@@ -334,10 +340,10 @@ getCountsNormal = function(v, centre="sanger", samplename=NA) {
     sample_col = which(colnames(VariantAnnotation::geno(v)$AD) != samplename)
     return (getAlleleCounts.MuSE(v, sample_col))
   } else if (centre=="broad") {
-    warning("The Broad ICGC pipeline does not report allele counts for the matched normal")
+    print("The Broad ICGC pipeline does not report allele counts for the matched normal")
     q(save="no", status=1)
   } else {
-    warning(paste("Supplied centre not supported:", centre))
+    print(paste("Supplied centre not supported:", centre))
     q(save="no", status=1)
   }
 }
@@ -362,7 +368,7 @@ getCountsTumour = function(v, centre="sanger", samplename=NA) {
   } else if (centre=="broad") {
     getAlleleCounts.Broad(v, 1)
   } else {
-    warning(paste("Supplied centre not supported:", centre))
+    print(paste("Supplied centre not supported:", centre))
     q(save="no", status=1)
   }
 }
@@ -433,7 +439,7 @@ getAlleleCounts.DKFZ = function(v, sample_col) {
 #' @noRd
 getAlleleCounts.MuSE = function(v, sample_col) {
   if (length(colnames(VariantAnnotation::geno(v)$AD)) > 2) {
-    warning("In getAlleleCounts.MuSE: Assuming 2 columns with read counts, but found more. This is not supported")
+    print("In getAlleleCounts.MuSE: Assuming 2 columns with read counts, but found more. This is not supported")
     q(save="no", status=1)
   }
 
@@ -536,6 +542,7 @@ run_linkage_pull_mut = function(output, loci_file, bam_file, bai_file) {
 mut_mut_phasing = function(loci_file, phased_file, bam_file, bai_file, max_distance) {
   # Check if there are lines in the file, otherwise it will crash this script
   if (file.info(loci_file)$size == 0) {
+    print("No lines in loci file")
     q(save="no")
   }
   

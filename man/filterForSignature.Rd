@@ -6,7 +6,7 @@
 #}
 \usage{
 filterForSignature(signature_anno_loci_file, signature_regex, outfile,
-  trinucleotide_column = 5)
+  trinucleotide_column = 5, alt_alleles = NA, alt_allele_column = 4)
 }
 \arguments{
 \item{signature_anno_loci_file}{Filepath to a with tri-nucleotide context annotated loci}
@@ -16,6 +16,10 @@ filterForSignature(signature_anno_loci_file, signature_regex, outfile,
 \item{outfile}{Filepath to where to store the output.}
 
 \item{trinucleotide_column}{Integer representing the column within the input file that contains the context}
+
+\item{alt_alleles}{An optional vector with reference alleles to allow.}
+
+\item{alt_allele_column}{The column in the annotated loci file that contains the reference base.}
 
 \item{vector_of_trinucleotides}{A vector containing the base to check and its immediate neighbors
 #}
