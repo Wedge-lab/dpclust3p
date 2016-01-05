@@ -148,11 +148,29 @@ getTrinucleotideContext = function(loci_file, outfile, ref_genome) {
 #' @param signature_regex A regex that captures the signature to keep.
 #' @param outfile Filepath to where to store the output.
 #' @param trinucleotide_column Integer representing the column within the input file that contains the context
+#' @param ref_alleles An optional vector with reference alleles to allow.
+#' @param ref_allele_column The column in the annotated loci file that contains the reference base.
 #' @author sd11
 #' @export
-filterForSignature = function(signature_anno_loci_file, signature_regex, outfile, trinucleotide_column=5) {
+filterForSignature = function(signature_anno_loci_file, signature_regex, outfile, trinucleotide_column=5, ref_alleles=NA, ref_allele_column=3) {
   signature_anno_loci = read.table(signature_anno_loci_file, sep='\t', header=F, stringsAsFactors=F)
   signature_anno_loci_filt = signature_anno_loci[grepl(signature_regex, signature_anno_loci[,trinucleotide_column]), ]
+
+  if (!is.na(ref_alleles)) {
+    regex_split = gsub("(", "", signature_regex, fixed=T)
+    regex_split = gsub(")", "", regex_split, fixed=T)
+    regex_split = unlist(strsplit(regex_split, "|", fixed=T))
+    selection = rep(F, nrow(signature_anno_loci))
+    
+    # Go through all signatures and their specific reference context
+    for (i in 1:length(regex_split)) {
+      ref_i = ref_alleles[i]
+      sign_i = regex_split[i]
+      # Select only those mutations that have this particular context and reference
+      selection[signature_anno_loci[,trinucleotide_column]==sign_i & signature_anno_loci[,ref_allele_column]==ref_i] = T
+    }
+    signature_anno_loci_filt = signature_anno_loci_filt[selection,]
+  }
   write.table(signature_anno_loci_filt, file=outfile, row.names=F, col.names=F, quote=F, sep="\t")
 }
 
@@ -160,13 +178,20 @@ filterForSignature = function(signature_anno_loci_file, signature_regex, outfile
 #' cytosine deaminase signature, or C>T at CpG.
 #' @param signature_anno_loci_file Filepath to a with tri-nucleotide context annotated loci
 #' @param outfile Filepath to where to store the output.
+#' @param ref_genome Full path to an indexed reference genome fasta file
 #' @param trinucleotide_column Integer representing the column within the input file that contains the context
+#' @param ref_allele_column The column in the annotated loci file that contains the reference base.
 #' @author sd11
 #' @export
-filterForDeaminase = function(loci_file, outfile, trinucleotide_column=5, ref_genome="hg19") {
+filterForDeaminase = function(loci_file, outfile, ref_genome, trinucleotide_column=5, ref_allele_column=3) {
   signature_anno_loci_file = gsub(".txt", "_signature_anno.txt", loci_file)
   getTrinucleotideContext(loci_file, signature_anno_loci_file, ref_genome)
-  filterForSignature(signature_anno_loci_file, "(CAG)|(CTG)|(GAC)|(GTC)", outfile, trinucleotide_column=trinucleotide_column)
+  filterForSignature(signature_anno_loci_file=signature_anno_loci_file, 
+                     signature_regex="(CAG)|(CTG)|(GAC)|(GTC)", 
+                     outfile=outfile, 
+                     trinucleotide_column=trinucleotide_column, 
+                     ref_alleles=c("G", "C", "G", "C"), 
+                     ref_allele_column=ref_allele_column)
 }
 
 
