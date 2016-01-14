@@ -1000,6 +1000,10 @@ GetWTandMutCount <- function(loci_file, allele_frequencies_file) {
   alleleFrequencies.gr = GenomicRanges::GRanges(alleleFrequencies[,1], IRanges::IRanges(alleleFrequencies[,2], alleleFrequencies[,2]), rep('*', nrow(alleleFrequencies)))
   elementMetadata(alleleFrequencies.gr) = alleleFrequencies[,3:7]
   
+  # Subset the allele frequencies by the loci we would like to include
+  overlap = findOverlaps(subs.data.gr, alleleFrequencies.gr)
+  alleleFrequencies = alleleFrequencies[subjectHits(overlap),]
+  
   nucleotides = c("A","C","G","T")
   ref.indices = match(subs.data[,3],nucleotides)
   alt.indices = match(subs.data[,4],nucleotides)
