@@ -288,6 +288,22 @@ dumpCounts.Muse = function(vcf_infile, tumour_outfile, normal_outfile=NA, refenc
   dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="muse", normal_outfile=normal_outfile, refence_genome=refence_genome, samplename=samplename)
 }
 
+#' Dump allele counts from vcf - ICGC pancancer consensus pipeline
+#'
+#' Dump allele counts stored in the info column of the VCF file. Output will go into a file
+#' supplied as tumour_outfile. It will be a fully formatted allele counts file as returned 
+#' by alleleCounter. There are no counts for the matched normal. 
+#' @param vcf_infile The vcf file to read in
+#' @param tumour_outfile File to save the tumour counts to
+#' @param normal_outfile Optional parameter specifying where the normal output should go
+#' @param refence_genome Optional parameter specifying the reference genome build used
+#' @param samplename Optional parameter specifying the samplename to be used for matching the right column in the VCF
+#' @author sd11
+#' @export
+dumpCounts.ICGC_consensus = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19", samplename=NA) {
+  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="muse", normal_outfile=normal_outfile, refence_genome=refence_genome, samplename=samplename)
+}
+
 #' Dump allele counts from VCF
 #' 
 #' This function implements all the steps required for dumping counts from VCF
@@ -342,6 +358,9 @@ getCountsNormal = function(v, centre="sanger", samplename=NA) {
   } else if (centre=="broad") {
     print("The Broad ICGC pipeline does not report allele counts for the matched normal")
     q(save="no", status=1)
+  } else if (centre=="icgc_consensus") {
+    print("The ICGC consensus pipeline does not report allele counts for the matched normal")
+    q(save="no", status=1)
   } else {
     print(paste("Supplied centre not supported:", centre))
     q(save="no", status=1)
@@ -366,7 +385,9 @@ getCountsTumour = function(v, centre="sanger", samplename=NA) {
     sample_col = which(colnames(VariantAnnotation::geno(v)$AD) == samplename)
     return (getAlleleCounts.MuSE(v, sample_col))
   } else if (centre=="broad") {
-    getAlleleCounts.Broad(v, 1)
+    return(getAlleleCounts.Broad(v, 1))
+  } else if (centre=="icgc_consensus") {
+    return(getAlleleCounts.ICGC_consensus(v))
   } else {
     print(paste("Supplied centre not supported:", centre))
     q(save="no", status=1)
@@ -408,19 +429,7 @@ getAlleleCounts.DKFZ = function(v, sample_col) {
   allele.ref = as.character(VariantAnnotation::ref(v))
   allele.alt = unlist(lapply(VariantAnnotation::alt(v), function(x) { as.character(x[[1]]) }))
   
-  output = array(0, c(length(allele.ref), 4))
-  nucleotides = c("A", "C", "G", "T")
-  # Propagate the alt allele counts
-  nucleo.index = match(allele.alt, nucleotides)
-  for (i in 1:nrow(output)) {
-    output[i,nucleo.index[i]] = counts.alt[i]
-  }
-  
-  # Propagate the reference allele counts
-  nucleo.index = match(allele.ref, nucleotides)
-  for (i in 1:nrow(output)) {
-    output[i,nucleo.index[i]] = counts.ref[i]
-  }
+  output = construct_allelecounter_table(count.ref, count.alt, allele.ref, allele.alt)
   return(output)
 }
 
@@ -458,18 +467,7 @@ getAlleleCounts.MuSE = function(v, sample_col) {
 
   allele.ref = as.character(VariantAnnotation::ref(v))
   
-  output = array(0, c(length(allele.ref), 4))
-  nucleotides = c("A", "C", "G", "T")
-  # Propagate the reference allele counts
-  nucleo.index = match(allele.ref, nucleotides)
-  for (i in 1:nrow(output)) {
-    output[i,nucleo.index[i]] = counts[i,1]
-  }
-  # Propagate the alt allele counts
-  nucleo.index = match(allele.alt, nucleotides)
-  for (i in 1:nrow(output)) {
-    output[i,nucleo.index[i]] = counts[i,2]
-  }
+  output = construct_allelecounter_table(counts[i,1], counts[i,2], allele.ref, allele.alt)
   return(output)
 }
 
@@ -491,6 +489,38 @@ getAlleleCounts.Broad = function(v, sample_col) {
   allele.ref = as.character(VariantAnnotation::ref(v))
   allele.alt = unlist(lapply(VariantAnnotation::alt(v), function(x) { as.character(x[[1]]) }))
   
+  output = construct_allelecounter_table(count.ref, count.alt, allele.ref, allele.alt)
+  return(output)
+}
+
+#' Dump allele counts in ICGC consensus SNV format
+#' 
+#' This function fetches allele counts from the info field in the VCF file.
+#' 
+#' @param v The vcf file
+#' @return An array with 4 columns: Counts for A, C, G, T
+#' @author sd11
+#' @noRd
+#' Note: If there are multiple ALT alleles this function will only take the first mentioned! 
+getAlleleCounts.ICGC_consensus = function(v) {
+  count.alt = info(v)$t_alt_count
+  count.ref = info(v)$t_ref_count
+  allele.ref = as.character(VariantAnnotation::ref(v))
+  allele.alt = unlist(lapply(VariantAnnotation::alt(v), function(x) { as.character(x[[1]]) }))
+  
+  output = construct_allelecounter_table(count.ref, count.alt, allele.ref, allele.alt)
+  return(output)
+}
+
+#' Function that constructs a table in the format of the allele counter
+#' @param count.ref Number of reads supporting the reference allele
+#' @param count.alt Number of reads supporting the variant allele
+#' @param allele.ref The reference allele
+#' @param allele.alt The variant allele
+#' @return A data.frame consisting of four columns: Reads reporting A, C, G and T
+#' @author sd11
+#' @noRd
+construct_allelecounter_table = function(count.ref, count.alt, allele.ref, allele.alt) {
   output = array(0, c(length(allele.ref), 4))
   nucleotides = c("A", "C", "G", "T")
   # Propagate the alt allele counts
