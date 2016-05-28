@@ -300,8 +300,8 @@ dumpCounts.Muse = function(vcf_infile, tumour_outfile, normal_outfile=NA, refenc
 #' @param samplename Optional parameter specifying the samplename to be used for matching the right column in the VCF
 #' @author sd11
 #' @export
-dumpCounts.ICGC_consensus = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19", samplename=NA) {
-  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="muse", normal_outfile=normal_outfile, refence_genome=refence_genome, samplename=samplename)
+dumpCounts.ICGCconsensus = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19", samplename=NA) {
+  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="icgc_consensus", normal_outfile=normal_outfile, refence_genome=refence_genome, samplename=samplename)
 }
 
 #' Dump allele counts from VCF
