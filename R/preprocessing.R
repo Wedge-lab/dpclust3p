@@ -845,11 +845,70 @@ ascatNgsToBattenberg = function(outfile.prefix, copynumber.caveman.file, samples
 ############################################
 # Combine all the steps into a DP input file
 ############################################
+
+#' Check if the Y chromosome is present and the donor is male. If this statement is TRUE we need to 
+#' there is no estimate of the Y chromosome, which BB currently provides as two copies of X
+#' @param subclone.data A read-in Battenberg subclones.txt file as a data.frame
+#' @return The input data.frame with a Y chromosome entry added and possible X chromosome adjustment
+#' @author sd11
+#' @noRd
+addYchromToBattenberg = function(subclone.data) {
+  # Take the largest segment on X chromosome
+  xlargest = which.max(subclone.data[subclone.data$chr=="X", ]$endpos - subclone.data[subclone.data$chr=="X", ]$startpos)
+  xlargest = subclone.data[subclone.data$chr=="X", ][xlargest,]
+  
+  # Get the total availability of X
+  xnmaj = xlargest$nMaj1_A * xlargest$frac1_A + ifelse(is.na(xlargest$frac2_A), 0, xlargest$nMaj2_A * xlargest$frac2_A)
+  xnmin = xlargest$nMin1_A * xlargest$frac1_A + ifelse(is.na(xlargest$frac2_A), 0, xlargest$nMin2_A * xlargest$frac2_A)
+  
+  # If there are no two copies we assume that Y was lost and make no changes
+  if (xnmaj + xnmin >=2 & xnmin >= 1) {
+    # We have at least 1 copy of either allele. One must therefore be the Y chromosome
+    
+    # Remove a copy of the X chromosome
+    ynMaj_1 = subclone.data[subclone.data$chr=="X", c("nMin1_A")]
+    yfrac_1 = subclone.data[subclone.data$chr=="X", c("frac1_A")]
+    subclone.data[subclone.data$chr=="X", c("nMin1_A")] = 0
+    
+    # if there was subclonal copy number we need to remove/adapt that too
+    if (!is.na(xlargest$frac2_A)) {
+      ynMaj_2 = subclone.data[subclone.data$chr=="X", c("nMin2_A")]
+      yfrac_2 = subclone.data[subclone.data$chr=="X", c("frac2_A")]
+      subclone.data[subclone.data$chr=="X", c("nMin2_A")] = 0
+    } else {
+      ynMaj_2 = NA
+      yfrac_2 = NA
+    }
+  } else {
+    # No 2 copies, we assume that Y has been lost
+    ynMaj_1 = 0
+    yfrac_1 = 1
+    ynMaj_2 = NA
+    yfrac_2 = NA
+  }
+  
+  # Add Y
+  subclone.data = rbind(subclone.data, 
+                        data.frame(chr="Y", startpos=59373566, endpos=3086910193, BAF=NA, pval=NA, LogR=NA, ntot=NA, 
+                                   nMaj1_A=ynMaj_1, nMin1_A=0, frac1_A=yfrac_1, nMaj2_A=ynMaj_2, nMin2_A=NA, frac2_A=yfrac_2, SDfrac_A=NA, SDfrac_A_BS=NA, frac1_A_0.025=NA, frac1_A_0.975=NA, 
+                                   nMaj1_B=NA, nMin1_B=NA, frac1_B=NA, nMaj2_B=NA, nMin2_B=NA, frac2_B=NA, SDfrac_B=NA, SDfrac_B_BS=NA, frac1_B_0.025=NA, frac1_B_0.975=NA, 
+                                   nMaj1_C=NA, nMin1_C=NA, frac1_C=NA, nMaj2_C=NA, nMin2_C=NA, frac2_C=NA, SDfrac_C=NA, SDfrac_C_BS=NA, frac1_C_0.025=NA, frac1_C_0.975=NA, 
+                                   nMaj1_D=NA, nMin1_D=NA, frac1_D=NA, nMaj2_D=NA, nMin2_D=NA, frac2_D=NA, SDfrac_D=NA, SDfrac_D_BS=NA, frac1_D_0.025=NA, frac1_D_0.975=NA, 
+                                   nMaj1_E=NA, nMin1_E=NA, frac1_E=NA, nMaj2_E=NA, nMin2_E=NA, frac2_E=NA, SDfrac_E=NA, SDfrac_E_BS=NA, frac1_E_0.025=NA, frac1_E_0.975=NA, 
+                                   nMaj1_F=NA, nMin1_F=NA, frac1_F=NA, nMaj2_F=NA, nMin2_F=NA, frac2_F=NA, SDfrac_F=NA, SDfrac_F_BS=NA, frac1_F_0.025=NA, frac1_F_0.975=NA)
+  )
+  return(subclone.data)
+}
+
 #' Main function that creates the DP input file. A higher level function should be called by users
 #' @noRd
 GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, is.male = F, out.dir = NULL, SNP.phase.file = NULL, mut.phase.file = NULL){
   
   subclone.data = read.table(subclone.file,sep="\t",header=T,stringsAsFactors=F)
+  # Add in the Y chrom if donor is male and Battenberg hasn't supplied it (BB returns X/Y ad multiple copies of X for men)
+  if (is.male & (! "Y" %in% subclone.data$chr)) {
+    subclone.data = addYchromToBattenberg(subclone.data)
+  }
   subclone.data.gr = GenomicRanges::GRanges(subclone.data$chr, IRanges::IRanges(subclone.data$startpos, subclone.data$endpos), rep('*', nrow(subclone.data)))
   elementMetadata(subclone.data.gr) = subclone.data[,3:ncol(subclone.data)]
   
