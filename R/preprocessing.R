@@ -889,7 +889,7 @@ addYchromToBattenberg = function(subclone.data) {
   
   # Add Y
   subclone.data = rbind(subclone.data, 
-                        data.frame(chr="Y", startpos=59373566, endpos=3086910193, BAF=NA, pval=NA, LogR=NA, ntot=NA, 
+                        data.frame(chr="Y", startpos=0, endpos=59373566, BAF=NA, pval=NA, LogR=NA, ntot=NA, 
                                    nMaj1_A=ynMaj_1, nMin1_A=0, frac1_A=yfrac_1, nMaj2_A=ynMaj_2, nMin2_A=NA, frac2_A=yfrac_2, SDfrac_A=NA, SDfrac_A_BS=NA, frac1_A_0.025=NA, frac1_A_0.975=NA, 
                                    nMaj1_B=NA, nMin1_B=NA, frac1_B=NA, nMaj2_B=NA, nMin2_B=NA, frac2_B=NA, SDfrac_B=NA, SDfrac_B_BS=NA, frac1_B_0.025=NA, frac1_B_0.975=NA, 
                                    nMaj1_C=NA, nMin1_C=NA, frac1_C=NA, nMaj2_C=NA, nMin2_C=NA, frac2_C=NA, SDfrac_C=NA, SDfrac_C_BS=NA, frac1_C_0.025=NA, frac1_C_0.975=NA, 
