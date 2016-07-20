@@ -1016,8 +1016,8 @@ GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, 
   
   #test whether mut burden is less than expected value for MCN = 1
   p.vals1 = sapply(1:length(non.zero.indices),function(v,e,i){
-    prop.test(v$mut.count[i],v$mut.count[i] + v$WT.count[i],alternative="less")$p.value
-  },v=info[non.zero.indices,], e= expected.burden.for.MCN[non.zero.indices])
+    prop.test(v$mut.count[i],v$mut.count[i] + v$WT.count[i], e[i], alternative="less")$p.value
+  },v=info[non.zero.indices,], e=expected.burden.for.MCN[non.zero.indices])
   #test whether mut burden is above error rate (assumed to be 1 in 200)
   p.vals2 = sapply(1:length(non.zero.indices),function(v,i){
     prop.test(v$mut.count[i],v$mut.count[i] + v$WT.count[i],0.005,alternative="greater")$p.value
