@@ -44,6 +44,12 @@ concat_files = function(fofn, inputdir, outfile, haveHeader) {
 split_by_chrom = function(infile, prefix, postfix, outdir, chrom_file) {
   outdir = paste(outdir, "/", sep="")
   
+  # Check if there are lines in the file, otherwise it will crash this script
+  if (file.info(infile)$size == 0) {
+    print("No lines in loci file")
+    q(save="no")
+  }
+  
   loci = read.delim(infile, stringsAsFactors=F, header=F)
   
   chroms = read.delim(chrom_file, stringsAsFactors=F, header=F)
@@ -117,6 +123,85 @@ vcf2loci = function(vcf_files, fai_file, ign_file, outfile) {
 }
 
 ############################################
+# Mutation signatures
+############################################
+
+#' Obtain tri-nucleotide context. It reads in the supplied loci file and querries
+#' the provided reference genome fasta for the context. Finally it writes out the
+#' loci with annotated context.
+#' @param loci_file A 4 column loci file with chrom, position, reference allele and alt allele
+#' @param outfile Where to write the output
+#' @param ref_genome Full path to a reference genome Fasta file
+#' @author sd11
+#' @export
+getTrinucleotideContext = function(loci_file, outfile, ref_genome) {
+  loci = read.table(loci_file, sep='\t', header=F, stringsAsFactors=F)
+  loci.g = GenomicRanges::GRanges(seqnames=loci[,1], ranges=IRanges::IRanges(loci[,2], loci[,2]))
+  r = Rsamtools::scanFa(file=ref_genome, resize(GenomicRanges::granges(loci.g), 3, fix="center"))
+  write.table(cbind(loci, as.data.frame(r)), file=outfile, row.names=F, col.names=F, quote=F, sep="\t")
+}
+
+# #' Checks each tri-nucleotide context whether its CAG or CTG
+# #' @param vector_of_trinucleotides A vector containing the base to check and its immediate neighbors
+# #' @author sd11
+# isDeaminase = function(vector_of_trinucleotides) {
+#   return(grepl("(CAG)|(CTG)|(GAC)|(GTC)", vector_of_trinucleotides))
+# }
+
+#' Filter a with tri-nucleotide context annotated list of loci for a particular signature
+#' supplied as a regex like so: (CAG)|(CTG)|(GAC)|(GTC).
+#' @param signature_anno_loci_file Filepath to a with tri-nucleotide context annotated loci
+#' @param signature_regex A regex that captures the signature to keep.
+#' @param outfile Filepath to where to store the output.
+#' @param trinucleotide_column Integer representing the column within the input file that contains the context
+#' @param alt_alleles An optional vector with reference alleles to allow.
+#' @param alt_allele_column The column in the annotated loci file that contains the reference base.
+#' @author sd11
+#' @export
+filterForSignature = function(signature_anno_loci_file, signature_regex, outfile, trinucleotide_column=5, alt_alleles=NA, alt_allele_column=4) {
+  signature_anno_loci = read.table(signature_anno_loci_file, sep='\t', header=F, stringsAsFactors=F)
+  signature_anno_loci_filt = signature_anno_loci[grepl(signature_regex, signature_anno_loci[,trinucleotide_column]), ]
+
+  if (!is.na(alt_alleles)) {
+    regex_split = gsub("(", "", signature_regex, fixed=T)
+    regex_split = gsub(")", "", regex_split, fixed=T)
+    regex_split = unlist(strsplit(regex_split, "|", fixed=T))
+    selection = rep(F, nrow(signature_anno_loci_filt))
+    
+    # Go through all signatures and their specific reference context
+    for (i in 1:length(regex_split)) {
+      alt_i = alt_alleles[i]
+      sign_i = regex_split[i]
+      # Select only those mutations that have this particular context and reference
+      selection[signature_anno_loci_filt[,trinucleotide_column]==sign_i & signature_anno_loci_filt[,alt_allele_column]==alt_i] = T
+    }
+    signature_anno_loci_filt = signature_anno_loci_filt[selection,]
+  }
+  write.table(signature_anno_loci_filt, file=outfile, row.names=F, col.names=F, quote=F, sep="\t")
+}
+
+#' Convenience function that filters a with tri-nucleotide context annotated list of loci for 
+#' cytosine deaminase signature, or C>T at CpG.
+#' @param signature_anno_loci_file Filepath to a with tri-nucleotide context annotated loci
+#' @param outfile Filepath to where to store the output.
+#' @param ref_genome Full path to an indexed reference genome fasta file
+#' @param trinucleotide_column Integer representing the column within the input file that contains the context
+#' @param alt_allele_column The column in the annotated loci file that contains the reference base.
+#' @author sd11
+#' @export
+filterForDeaminase = function(loci_file, outfile, ref_genome, trinucleotide_column=5, alt_allele_column=4) {
+  signature_anno_loci_file = gsub(".txt", "_signature_anno.txt", loci_file)
+  getTrinucleotideContext(loci_file, signature_anno_loci_file, ref_genome)
+  filterForSignature(signature_anno_loci_file=signature_anno_loci_file, 
+                     signature_regex="(CCG)|(GCC)|(CGG)|(GGC)", 
+                     outfile=outfile, 
+                     trinucleotide_column=trinucleotide_column, 
+                     alt_alleles=c("T", "T", "A", "A"), 
+                     alt_allele_column=alt_allele_column)
+}
+
+
+############################################
 # Allele counting
 ############################################
 #' Run alleleCount
@@ -139,8 +224,8 @@ alleleCount = function(locifile, bam, outfile, min_baq=20, min_maq=35) {
   system(cmd, wait=T)
 }
 
-#' Dump allele counts from vcf
-
+#' Dump allele counts from vcf - Sanger ICGC pancancer pipeline
+#'
 #' Dump allele counts stored in the sample columns of the VCF file. Output will go into a file
 #' supplied as tumour_outfile and optionally normal_outfile. It will be a fully formatted
 #' allele counts file as returned by alleleCounter.
@@ -148,9 +233,83 @@ alleleCount = function(locifile, bam, outfile, min_baq=20, min_maq=35) {
 #' @param tumour_outfile File to save the tumour counts to
 #' @param normal_outfile Optional parameter specifying where the normal output should go
 #' @param refence_genome Optional parameter specifying the reference genome build used
+#' @param samplename Optional parameter specifying the samplename to be used for matching the right column in the VCF
 #' @author sd11
 #' @export
-dumpCounts.Sanger = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19") {
+dumpCounts.Sanger = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19", samplename=NA) {
+  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="sanger", normal_outfile=normal_outfile, refence_genome=refence_genome, samplename=samplename)
+}
+
+#' Dump allele counts from vcf - DKFZ ICGC pancancer pipeline
+#'
+#' Dump allele counts stored in the sample columns of the VCF file. Output will go into a file
+#' supplied as tumour_outfile and optionally normal_outfile. It will be a fully formatted
+#' allele counts file as returned by alleleCounter.
+#' @param vcf_infile The vcf file to read in
+#' @param tumour_outfile File to save the tumour counts to
+#' @param normal_outfile Optional parameter specifying where the normal output should go
+#' @param refence_genome Optional parameter specifying the reference genome build used
+#' @param samplename Optional parameter specifying the samplename to be used for matching the right column in the VCF
+#' @author sd11
+#' @export
+dumpCounts.DKFZ = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19", samplename=NA) {
+  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="dkfz", normal_outfile=normal_outfile, refence_genome=refence_genome, samplename=samplename)
+}
+
+#' Dump allele counts from vcf - Broad ICGC pancancer pipeline
+#'
+#' Dump allele counts stored in the sample columns of the VCF file. Output will go into a file
+#' supplied as tumour_outfile and optionally normal_outfile. It will be a fully formatted
+#' allele counts file as returned by alleleCounter.
+#' @param vcf_infile The vcf file to read in
+#' @param tumour_outfile File to save the tumour counts to
+#' @param normal_outfile Optional parameter specifying where the normal output should go
+#' @param refence_genome Optional parameter specifying the reference genome build used
+#' @param samplename Optional parameter specifying the samplename to be used for matching the right column in the VCF
+#' @author sd11
+#' @export
+dumpCounts.Broad = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19", samplename=NA) {
+  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="broad", normal_outfile=normal_outfile, refence_genome=refence_genome, samplename=samplename)
+}
+
+#' Dump allele counts from vcf - MuSE ICGC pancancer pipeline
+#'
+#' Dump allele counts stored in the sample columns of the VCF file. Output will go into a file
+#' supplied as tumour_outfile and optionally normal_outfile. It will be a fully formatted
+#' allele counts file as returned by alleleCounter.
+#' @param vcf_infile The vcf file to read in
+#' @param tumour_outfile File to save the tumour counts to
+#' @param normal_outfile Optional parameter specifying where the normal output should go
+#' @param refence_genome Optional parameter specifying the reference genome build used
+#' @param samplename Optional parameter specifying the samplename to be used for matching the right column in the VCF
+#' @author sd11
+#' @export
+dumpCounts.Muse = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19", samplename=NA) {
+  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="muse", normal_outfile=normal_outfile, refence_genome=refence_genome, samplename=samplename)
+}
+
+#' Dump allele counts from vcf - ICGC pancancer consensus pipeline
+#'
+#' Dump allele counts stored in the info column of the VCF file. Output will go into a file
+#' supplied as tumour_outfile. It will be a fully formatted allele counts file as returned 
+#' by alleleCounter. There are no counts for the matched normal. 
+#' @param vcf_infile The vcf file to read in
+#' @param tumour_outfile File to save the tumour counts to
+#' @param normal_outfile Optional parameter specifying where the normal output should go
+#' @param refence_genome Optional parameter specifying the reference genome build used
+#' @param samplename Optional parameter specifying the samplename to be used for matching the right column in the VCF
+#' @author sd11
+#' @export
+dumpCounts.ICGCconsensus = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19", samplename=NA) {
+  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="icgc_consensus", normal_outfile=normal_outfile, refence_genome=refence_genome, samplename=samplename)
+}
+
+#' Dump allele counts from VCF
+#' 
+#' This function implements all the steps required for dumping counts from VCF
+#' as supplied by the ICGC pancancer pipelines. 
+#' @noRd
+dumpCountsFromVcf = function(vcf_infile, tumour_outfile, centre, normal_outfile=NA, refence_genome="hg19", samplename=NA) {
   # Helper function for writing the output  
   write.output = function(output, output_file) {
     write.table(output, file=output_file, col.names=T, quote=F, row.names=F, sep="\t")
@@ -158,19 +317,19 @@ dumpCounts.Sanger = function(vcf_infile, tumour_outfile, normal_outfile=NA, refe
   
   # Read in the vcf and dump the tumour counts in the right format
   v = VariantAnnotation::readVcf(vcf_infile, refence_genome)
-  tumour = getCountsTumour(v)
+  tumour = getCountsTumour(v, centre=centre, samplename=samplename)
   tumour = formatOutput(tumour, v)
   write.output(tumour, tumour_outfile)
   
   # Optionally dump the normal counts in the right format
   if (!is.na(normal_outfile)) {
-    normal = getCountsNormal(v)
+    normal = getCountsNormal(v, centre=centre, samplename=samplename)
     normal = formatOutput(normal, v)
     write.output(normal, normal_outfile)
   }
 }
 
-#' Format a 4 column counts table into the alleleCounter format
+#' Format a 4 column counts table into the alleleCounter format. This function assumes A, C, G, T format.
 #' @noRd
 formatOutput = function(counts_table, v) {
   output = data.frame(as.character(seqnames(v)), start(ranges(v)), counts_table, rowSums(counts_table))
@@ -183,14 +342,29 @@ formatOutput = function(counts_table, v) {
 #' Returns an allele counts table for the normal sample
 #' @param v The vcf file
 #' @param centre The sequencing centre of which pipeline the vcf file originates
+#' @return An array with 4 columns: Counts for A, C, G, T
 #' @author sd11
 #' @noRd
-getCountsNormal = function(v, centre="sanger") {
-  if (centre!="sanger") {
-    warning("Other centres beyond the Sanger not yet supported")
+getCountsNormal = function(v, centre="sanger", samplename=NA) {
+  if (centre=="sanger") {
+    return(getAlleleCounts.Sanger(v, 1))
+  } else if(centre=="dkfz") {
+    sample_col = which(colnames(VariantAnnotation::geno(v)$DP4) == "CONTROL")
+    return(getAlleleCounts.DKFZ(v, sample_col))
+  } else if (centre=="muse") {
+    # Assuming the tumour name is provided
+    sample_col = which(colnames(VariantAnnotation::geno(v)$AD) != samplename)
+    return (getAlleleCounts.MuSE(v, sample_col))
+  } else if (centre=="broad") {
+    print("The Broad ICGC pipeline does not report allele counts for the matched normal")
+    q(save="no", status=1)
+  } else if (centre=="icgc_consensus") {
+    print("The ICGC consensus pipeline does not report allele counts for the matched normal")
+    q(save="no", status=1)
+  } else {
+    print(paste("Supplied centre not supported:", centre))
     q(save="no", status=1)
   }
-  return(getAlleleCounts.Sanger(v, 1))
 }
 
 #' Dump allele counts from vcf for tumour
@@ -198,14 +372,26 @@ getCountsNormal = function(v, centre="sanger") {
 #' Returns an allele counts table for the tumour sample
 #' @param v The vcf file
 #' @param centre The sequencing centre of which pipeline the vcf file originates
+#' @return An array with 4 columns: Counts for A, C, G, T
 #' @author sd11
 #' @noRd
-getCountsTumour = function(v, centre="sanger") {
-  if (centre!="sanger") {
-    warning("Other centres beyond the Sanger not yet supported")
+getCountsTumour = function(v, centre="sanger", samplename=NA) {
+  if (centre=="sanger") {
+    return(getAlleleCounts.Sanger(v, 2))
+  } else if (centre=="dkfz") {
+    sample_col = which(colnames(VariantAnnotation::geno(v)$DP4) == "TUMOR")
+    return(getAlleleCounts.DKFZ(v, sample_col))
+  } else if (centre=="muse") {
+    sample_col = which(colnames(VariantAnnotation::geno(v)$AD) == samplename)
+    return (getAlleleCounts.MuSE(v, sample_col))
+  } else if (centre=="broad") {
+    return(getAlleleCounts.Broad(v, 1))
+  } else if (centre=="icgc_consensus") {
+    return(getAlleleCounts.ICGC_consensus(v))
+  } else {
+    print(paste("Supplied centre not supported:", centre))
     q(save="no", status=1)
   }
-  return(getAlleleCounts.Sanger(v, 2))
 }
 
 #' Dump allele counts from Sanger pipeline vcf
@@ -213,10 +399,142 @@ getCountsTumour = function(v, centre="sanger") {
 #' Helper function that dumps the allele counts from a Sanger pipeline VCF file
 #' @param v The vcf file
 #' @param sample_col The column in which the counts are. If it's the first sample mentioned in the vcf this would be sample_col 1
+#' @return An array with 4 columns: Counts for A, C, G, T
 #' @author sd11
 #' @noRd
 getAlleleCounts.Sanger = function(v, sample_col) {
-  return(cbind(geno(v)$FAZ[,sample_col]+geno(v)$RAZ[,sample_col], geno(v)$FCZ[,sample_col]+geno(v)$RCZ[,sample_col], geno(v)$FGZ[,sample_col]+geno(v)$RGZ[,sample_col], geno(v)$FTZ[,sample_col]+geno(v)$RTZ[,sample_col]))
+  return(cbind(VariantAnnotation::geno(v)$FAZ[,sample_col]+VariantAnnotation::geno(v)$RAZ[,sample_col], 
+               VariantAnnotation::geno(v)$FCZ[,sample_col]+VariantAnnotation::geno(v)$RCZ[,sample_col], 
+               VariantAnnotation::geno(v)$FGZ[,sample_col]+VariantAnnotation::geno(v)$RGZ[,sample_col], 
+               VariantAnnotation::geno(v)$FTZ[,sample_col]+VariantAnnotation::geno(v)$RTZ[,sample_col]))
+}
+
+#' Dump allele counts from the DKFZ pipeline
+#' 
+#' Helper function that takes a sample column and fetches allele counts. As the DKFZ pipeline does not
+#' provide counts for each base, but just the alt and reference, we will provide just those and the
+#' other bases with 0s.
+#' 
+#' Note: If there are multiple ALT alleles this function will only take the first mentioned!
+#' @param v The vcf file
+#' @param sample_col The column in which the counts are. If it's the first sample mentioned in the vcf this would be sample_col 1
+#' @return An array with 4 columns: Counts for A, C, G, T
+#' @author sd11
+#' @noRd
+getAlleleCounts.DKFZ = function(v, sample_col) {
+  # Fetch counts for both forward and reverse ref/alt
+  counts = VariantAnnotation::geno(v)$DP4[,sample_col,]
+  counts.ref = counts[,1] + counts[,2] # ref forward/reverse
+  counts.alt = counts[,3] + counts[,4] # alt forward/reverse
+  allele.ref = as.character(VariantAnnotation::ref(v))
+  allele.alt = unlist(lapply(VariantAnnotation::alt(v), function(x) { as.character(x[[1]]) }))
+  
+  output = construct_allelecounter_table(count.ref, count.alt, allele.ref, allele.alt)
+  return(output)
+}
+
+#' Dump allele counts from the MuSE pipeline
+#' 
+#' Helper function that takes a sample column and fetches allele counts. As the MuSE pipeline does not
+#' provide counts for each base, but just the alt and reference, we will provide just those and the
+#' other bases with 0s.
+#' 
+#' Note: If there are multiple ALT alleles this function will only take the first mentioned! 
+#' Note2: This function assumes there are only two columns with read counts. The format allows for more
+#' @param v The vcf file
+#' @param sample_col The column in which the counts are. If it's the first sample mentioned in the vcf this would be sample_col 1
+#' @return An array with 4 columns: Counts for A, C, G, T
+#' @author sd11
+#' @noRd
+getAlleleCounts.MuSE = function(v, sample_col) {
+  if (length(colnames(VariantAnnotation::geno(v)$AD)) > 2) {
+    print("In getAlleleCounts.MuSE: Assuming 2 columns with read counts, but found more. This is not supported")
+    q(save="no", status=1)
+  }
+
+  # An SNV can be represented by more than 1 alt alleles, here we pick the alt allele with the highest read count
+  num.snvs = nrow(VariantAnnotation::geno(v)$AD)
+  counts = array(NA, c(num.snvs, 2))
+  allele.alt = array(NA, num.snvs)
+  for (i in 1:num.snvs) {
+	snv.counts = unlist(VariantAnnotation::geno(v)$AD[i,sample_col])
+  	counts[i,1] = snv.counts[1] # The reference is the first base for which read counts are mentioned
+	select_base = which.max(snv.counts[2:length(snv.counts)])
+	allele.alt[i] = as.character(VariantAnnotation::alt(v)[[i]][select_base])
+	select_base = select_base+1 # The reference is the first base for which read counts are mentioned
+	counts[i,2] = snv.counts[select_base] 
+  }
+
+  allele.ref = as.character(VariantAnnotation::ref(v))
+  
+  output = construct_allelecounter_table(counts[i,1], counts[i,2], allele.ref, allele.alt)
+  return(output)
+}
+
+#' Dump allele counts from the Broad pipeline
+#' 
+#' Helper function that takes a sample column and fetches allele counts. As the Broad pipeline does not
+#' provide counts for each base, but just the alt and reference, we will provide just those and the
+#' other bases with 0s.
+#' 
+#' Note: If there are multiple ALT alleles this function will only take the first mentioned! 
+#' @param v The vcf file
+#' @param sample_col The column in which the counts are. If it's the first sample mentioned in the vcf this would be sample_col 1
+#' @return An array with 4 columns: Counts for A, C, G, T
+#' @author sd11
+#' @noRd
+getAlleleCounts.Broad = function(v, sample_col) {
+  count.ref = as.numeric(unlist(VariantAnnotation::geno(v)$ref_count))
+  count.alt = as.numeric(unlist(VariantAnnotation::geno(v)$alt_count))
+  allele.ref = as.character(VariantAnnotation::ref(v))
+  allele.alt = unlist(lapply(VariantAnnotation::alt(v), function(x) { as.character(x[[1]]) }))
+  
+  output = construct_allelecounter_table(count.ref, count.alt, allele.ref, allele.alt)
+  return(output)
+}
+
+#' Dump allele counts in ICGC consensus SNV format
+#' 
+#' This function fetches allele counts from the info field in the VCF file.
+#' 
+#' @param v The vcf file
+#' @return An array with 4 columns: Counts for A, C, G, T
+#' @author sd11
+#' @noRd
+#' Note: If there are multiple ALT alleles this function will only take the first mentioned! 
+getAlleleCounts.ICGC_consensus = function(v) {
+  count.alt = info(v)$t_alt_count
+  count.ref = info(v)$t_ref_count
+  allele.ref = as.character(VariantAnnotation::ref(v))
+  allele.alt = unlist(lapply(VariantAnnotation::alt(v), function(x) { as.character(x[[1]]) }))
+  
+  output = construct_allelecounter_table(count.ref, count.alt, allele.ref, allele.alt)
+  return(output)
+}
+
+#' Function that constructs a table in the format of the allele counter
+#' @param count.ref Number of reads supporting the reference allele
+#' @param count.alt Number of reads supporting the variant allele
+#' @param allele.ref The reference allele
+#' @param allele.alt The variant allele
+#' @return A data.frame consisting of four columns: Reads reporting A, C, G and T
+#' @author sd11
+#' @noRd
+construct_allelecounter_table = function(count.ref, count.alt, allele.ref, allele.alt) {
+  output = array(0, c(length(allele.ref), 4))
+  nucleotides = c("A", "C", "G", "T")
+  # Propagate the alt allele counts
+  nucleo.index = match(allele.alt, nucleotides)
+  for (i in 1:nrow(output)) {
+    output[i,nucleo.index[i]] = count.alt[i]
+  }
+  
+  # Propagate the reference allele counts
+  nucleo.index = match(allele.ref, nucleotides)
+  for (i in 1:nrow(output)) {
+    output[i,nucleo.index[i]] = count.ref[i]
+  }
+  return(output)
 }
 
 ############################################
@@ -254,6 +572,7 @@ run_linkage_pull_mut = function(output, loci_file, bam_file, bai_file) {
 mut_mut_phasing = function(loci_file, phased_file, bam_file, bai_file, max_distance) {
   # Check if there are lines in the file, otherwise it will crash this script
   if (file.info(loci_file)$size == 0) {
+    print("No lines in loci file")
     q(save="no")
   }
   
@@ -449,13 +768,147 @@ mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, 
 }
 
 ############################################
+# Copy number convert scripts
+############################################
+
+#' Transform ASCAT output into Battenberg
+#' 
+#' This function takes the ascat segments, acf and ploidy files to create
+#' a minimum Battenberg subclones and rho_and_psi file for use in pre-processing.
+#' These files only contain the essentials required by this package.
+#' @param outfile.prefix String prefix for the output files. Internally _subclones.txt and _rho_and_psi.txt will be added.
+#' @param segments.file String pointing to a segments.txt ASCAT output file
+#' @param acf.file String pointing to a acf.txt ASCAT output file
+#' @param ploidy.file String pointing to a ploidy.txt ASCAT output file
+#' @author sd11
+#' @export
+ascatToBattenberg = function(outfile.prefix, segments.file, acf.file, ploidy.file) {
+  # Construct a minimum Battenberg file with the copy number segments
+  d = read.table(segments.file, header=T, stringsAsFactors=F)
+  subclones = d[,2:6]
+  colnames(subclones)[4] = "nMaj1_A"
+  colnames(subclones)[5] = "nMin1_A"
+  subclones$frac1_A = 1
+  subclones$nMaj2_A = NA
+  subclones$nMin2_A = NA
+  subclones$frac2_A = NA
+  subclones$SDfrac_A = NA
+  write.table(subclones, paste(outfile.prefix, "_subclones.txt", sep=""), quote=F, sep="\t")
+  
+  # Now construct a minimum rho/psi file
+  cellularity = read.table(acf.file, header=T)[1,1]
+  ploidy = read.table(ploidy.file, header=T)[1,1]
+  
+  purity_ploidy = array(NA, c(3,5))
+  colnames(purity_ploidy) = c("rho", "psi", "ploidy", "distance", "is.best")
+  rownames(purity_ploidy) = c("ASCAT", "FRAC_GENOME", "REF_SEG")
+  purity_ploidy["FRAC_GENOME", "rho"] = cellularity
+  purity_ploidy["FRAC_GENOME", "psi"] = ploidy
+  write.table(purity_ploidy, paste(outfile.prefix, "_rho_and_psi.txt", sep=""), quote=F, sep="\t")
+}
+
+#' Transform ASCAT NGS output into Battenberg
+#' 
+#' This function takes the ascat copynumber.caveman.csv and samplestatistics files to create
+#' a minimum Battenberg subclones and rho_and_psi file for use in pre-processing.
+#' These files only contain the essentials required by this package.
+#' @param outfile.prefix String prefix for the output files. Internally _subclones.txt and _rho_and_psi.txt will be added.
+#' @param copynumber.caveman.file String pointing to an ASCAT NGS copynumber.caveman.csv file
+#' @param samplestatistics.file String point to an ASCAT NGS samplestatistics.csv file
+#' @author sd11
+#' @export
+ascatNgsToBattenberg = function(outfile.prefix, copynumber.caveman.file, samplestatistics.file) {
+  # Construct a minimum Battenberg file with the copy number segments
+  d = read.table(copynumber.caveman.file, sep=",", header=F, stringsAsFactors=F)
+  colnames(d) = c("count", "chr", "startpos", "endpos", "normal_total", "normal_minor", "tumour_total", "tumour_minor")
+  subclones = d[,2:4]
+  subclones$nMaj1_A = d$tumour_total-d$tumour_minor
+  subclones$nMin1_A = d$tumour_minor
+  subclones$frac1_A = 1
+  subclones$nMaj2_A = NA
+  subclones$nMin2_A = NA
+  subclones$frac2_A = NA
+  write.table(subclones, paste(outfile.prefix, "_subclones.txt", sep=""), quote=F, sep="\t")
+  
+  # Now construct a minimum rho/psi file
+  samplestats = read.table(samplestatistics.file, header=F, stringsAsFactors=F)
+  
+  purity_ploidy = array(NA, c(3,5))
+  colnames(purity_ploidy) = c("rho", "psi", "ploidy", "distance", "is.best")
+  rownames(purity_ploidy) = c("ASCAT", "FRAC_GENOME", "REF_SEG")
+  purity_ploidy["FRAC_GENOME", "rho"] = samplestats[samplestats$V1=="rho",2]
+  purity_ploidy["FRAC_GENOME", "psi"] = samplestats[samplestats$V1=="Ploidy",2]
+  write.table(purity_ploidy, paste(outfile.prefix, "_rho_and_psi.txt", sep=""), quote=F, sep="\t")
+}
+
+
+############################################
 # Combine all the steps into a DP input file
 ############################################
+
+#' Check if the Y chromosome is present and the donor is male. If this statement is TRUE we need to 
+#' there is no estimate of the Y chromosome, which BB currently provides as two copies of X
+#' @param subclone.data A read-in Battenberg subclones.txt file as a data.frame
+#' @return The input data.frame with a Y chromosome entry added and possible X chromosome adjustment
+#' @author sd11
+#' @noRd
+addYchromToBattenberg = function(subclone.data) {
+  # Take the largest segment on X chromosome
+  xlargest = which.max(subclone.data[subclone.data$chr=="X", ]$endpos - subclone.data[subclone.data$chr=="X", ]$startpos)
+  xlargest = subclone.data[subclone.data$chr=="X", ][xlargest,]
+  
+  # Get the total availability of X
+  xnmaj = xlargest$nMaj1_A * xlargest$frac1_A + ifelse(is.na(xlargest$frac2_A), 0, xlargest$nMaj2_A * xlargest$frac2_A)
+  xnmin = xlargest$nMin1_A * xlargest$frac1_A + ifelse(is.na(xlargest$frac2_A), 0, xlargest$nMin2_A * xlargest$frac2_A)
+  
+  # If there are no two copies we assume that Y was lost and make no changes
+  if (xnmaj + xnmin >=2 & xnmin >= 1) {
+    # We have at least 1 copy of either allele. One must therefore be the Y chromosome
+    
+    # Remove a copy of the X chromosome
+    ynMaj_1 = subclone.data[subclone.data$chr=="X", c("nMin1_A")]
+    yfrac_1 = subclone.data[subclone.data$chr=="X", c("frac1_A")]
+    subclone.data[subclone.data$chr=="X", c("nMin1_A")] = 0
+    
+    # if there was subclonal copy number we need to remove/adapt that too
+    if (!is.na(xlargest$frac2_A)) {
+      ynMaj_2 = subclone.data[subclone.data$chr=="X", c("nMin2_A")]
+      yfrac_2 = subclone.data[subclone.data$chr=="X", c("frac2_A")]
+      subclone.data[subclone.data$chr=="X", c("nMin2_A")] = 0
+    } else {
+      ynMaj_2 = NA
+      yfrac_2 = NA
+    }
+  } else {
+    # No 2 copies, we assume that Y has been lost
+    ynMaj_1 = 0
+    yfrac_1 = 1
+    ynMaj_2 = NA
+    yfrac_2 = NA
+  }
+  
+  # Add Y
+  subclone.data = rbind(subclone.data, 
+                        data.frame(chr="Y", startpos=0, endpos=59373566, BAF=NA, pval=NA, LogR=NA, ntot=NA, 
+                                   nMaj1_A=ynMaj_1, nMin1_A=0, frac1_A=yfrac_1, nMaj2_A=ynMaj_2, nMin2_A=NA, frac2_A=yfrac_2, SDfrac_A=NA, SDfrac_A_BS=NA, frac1_A_0.025=NA, frac1_A_0.975=NA, 
+                                   nMaj1_B=NA, nMin1_B=NA, frac1_B=NA, nMaj2_B=NA, nMin2_B=NA, frac2_B=NA, SDfrac_B=NA, SDfrac_B_BS=NA, frac1_B_0.025=NA, frac1_B_0.975=NA, 
+                                   nMaj1_C=NA, nMin1_C=NA, frac1_C=NA, nMaj2_C=NA, nMin2_C=NA, frac2_C=NA, SDfrac_C=NA, SDfrac_C_BS=NA, frac1_C_0.025=NA, frac1_C_0.975=NA, 
+                                   nMaj1_D=NA, nMin1_D=NA, frac1_D=NA, nMaj2_D=NA, nMin2_D=NA, frac2_D=NA, SDfrac_D=NA, SDfrac_D_BS=NA, frac1_D_0.025=NA, frac1_D_0.975=NA, 
+                                   nMaj1_E=NA, nMin1_E=NA, frac1_E=NA, nMaj2_E=NA, nMin2_E=NA, frac2_E=NA, SDfrac_E=NA, SDfrac_E_BS=NA, frac1_E_0.025=NA, frac1_E_0.975=NA, 
+                                   nMaj1_F=NA, nMin1_F=NA, frac1_F=NA, nMaj2_F=NA, nMin2_F=NA, frac2_F=NA, SDfrac_F=NA, SDfrac_F_BS=NA, frac1_F_0.025=NA, frac1_F_0.975=NA)
+  )
+  return(subclone.data)
+}
+
 #' Main function that creates the DP input file. A higher level function should be called by users
 #' @noRd
 GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, is.male = F, out.dir = NULL, SNP.phase.file = NULL, mut.phase.file = NULL){
   
   subclone.data = read.table(subclone.file,sep="\t",header=T,stringsAsFactors=F)
+  # Add in the Y chrom if donor is male and Battenberg hasn't supplied it (BB returns X/Y ad multiple copies of X for men)
+  if (is.male & (! "Y" %in% subclone.data$chr)) {
+    subclone.data = addYchromToBattenberg(subclone.data)
+  }
   subclone.data.gr = GenomicRanges::GRanges(subclone.data$chr, IRanges::IRanges(subclone.data$startpos, subclone.data$endpos), rep('*', nrow(subclone.data)))
   elementMetadata(subclone.data.gr) = subclone.data[,3:ncol(subclone.data)]
   
@@ -563,8 +1016,8 @@ GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, 
   
   #test whether mut burden is less than expected value for MCN = 1
   p.vals1 = sapply(1:length(non.zero.indices),function(v,e,i){
-    prop.test(v$mut.count[i],v$mut.count[i] + v$WT.count[i],alternative="less")$p.value
-  },v=info[non.zero.indices,], e= expected.burden.for.MCN[non.zero.indices])
+    prop.test(v$mut.count[i],v$mut.count[i] + v$WT.count[i], e[i], alternative="less")$p.value
+  },v=info[non.zero.indices,], e=expected.burden.for.MCN[non.zero.indices])
   #test whether mut burden is above error rate (assumed to be 1 in 200)
   p.vals2 = sapply(1:length(non.zero.indices),function(v,i){
     prop.test(v$mut.count[i],v$mut.count[i] + v$WT.count[i],0.005,alternative="greater")$p.value
@@ -635,6 +1088,10 @@ GetWTandMutCount <- function(loci_file, allele_frequencies_file) {
   print(head(alleleFrequencies))
   alleleFrequencies.gr = GenomicRanges::GRanges(alleleFrequencies[,1], IRanges::IRanges(alleleFrequencies[,2], alleleFrequencies[,2]), rep('*', nrow(alleleFrequencies)))
   elementMetadata(alleleFrequencies.gr) = alleleFrequencies[,3:7]
+  
+  # Subset the allele frequencies by the loci we would like to include
+  overlap = findOverlaps(subs.data.gr, alleleFrequencies.gr)
+  alleleFrequencies = alleleFrequencies[subjectHits(overlap),]
   
   nucleotides = c("A","C","G","T")
   ref.indices = match(subs.data[,3],nucleotides)
