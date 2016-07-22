@@ -1104,6 +1104,8 @@ GetWTandMutCount <- function(loci_file, allele_frequencies_file) {
   
   combined.gr = GenomicRanges::GRanges(seqnames(subs.data.gr), ranges(subs.data.gr), rep('*', nrow(subs.data)))
   elementMetadata(combined.gr) = data.frame(WT.count=WT.count, mut.count=mut.count)
+  
+  combined.gr = sortSeqlevels(combined.gr)
   return(combined.gr)
 }
 
