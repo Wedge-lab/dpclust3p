@@ -902,15 +902,16 @@ addYchromToBattenberg = function(subclone.data) {
 
 #' Main function that creates the DP input file. A higher level function should be called by users
 #' @noRd
-GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, is.male = F, out.dir = NULL, SNP.phase.file = NULL, mut.phase.file = NULL){
+GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, is.male = F, out.dir = NULL, SNP.phase.file = NULL, mut.phase.file = NULL, adjust_male_y_chrom=F){
   
   subclone.data = read.table(subclone.file,sep="\t",header=T,stringsAsFactors=F)
   # Add in the Y chrom if donor is male and Battenberg hasn't supplied it (BB returns X/Y ad multiple copies of X for men)
-  if (is.male & (! "Y" %in% subclone.data$chr)) {
+  if (is.male & (! "Y" %in% subclone.data$chr) & adjust_male_y_chrom) {
     subclone.data = addYchromToBattenberg(subclone.data)
   }
   subclone.data.gr = GenomicRanges::GRanges(subclone.data$chr, IRanges::IRanges(subclone.data$startpos, subclone.data$endpos), rep('*', nrow(subclone.data)))
   elementMetadata(subclone.data.gr) = subclone.data[,3:ncol(subclone.data)]
+  subclone.data.gr = sortSeqlevels(subclone.data.gr)
   
   info_anno = as.data.frame(cbind(array(NA, c(length(info), 7)))) 
   colnames(info_anno) = c('subclonal.CN','nMaj1','nMin1','frac1','nMaj2','nMin2','frac2')
@@ -1059,6 +1060,7 @@ GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, 
                   end=end(info))
   df = cbind(df, as.data.frame(elementMetadata(info)))
   colnames(df)[1] = "chr"
+  df = df[with(df, order(chr)),]
   print(head(df))
   write.table(df, outputfile, sep="\t", row.names=F, quote=F)
 }
