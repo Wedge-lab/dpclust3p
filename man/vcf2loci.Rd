@@ -4,7 +4,8 @@
 \alias{vcf2loci}
 \title{Transform vcf to loci file}
 \usage{
-vcf2loci(vcf_files, fai_file, ign_file, outfile)
+vcf2loci(vcf_files, fai_file, ign_file, outfile, dummy_alt_allele = NA,
+  dummy_ref_allele = NA)
 }
 \arguments{
 \item{vcf_files}{A vector of vcf files to be considered}
@@ -14,6 +15,10 @@ vcf2loci(vcf_files, fai_file, ign_file, outfile)
 \item{ign_file}{A file with chromosomes to be excluded from consideration}
 
 \item{outfile}{Where to store the output}
+
+\item{dummy_alt_allele}{The alt allele to store, supply when you want to override what is in the VCF (Default: NA)}
+
+\item{dummy_ref_allele}{The reference allele to store, supply when you want to override what is in the VCF (Default: NA)}
 }
 \description{
 Function that dumps the loci of snvs from a series of vcf files into a single loci file
