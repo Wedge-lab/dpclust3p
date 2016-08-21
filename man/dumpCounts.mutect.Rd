@@ -4,27 +4,24 @@
 \alias{dumpCounts.mutect}
 \title{Dump allele counts from vcf - Mutect}
 \usage{
-dumpCounts.mutect(vcf_infile, tumour_outfile, normal_outfile = NA,
-  refence_genome = "hg19", samplename = NA)
+dumpCounts.mutect(vcf_infile, tumour_outfile, samplename, normal_outfile = NA,
+  refence_genome = "hg19")
 }
 \arguments{
 \item{vcf_infile}{The vcf file to read in}
 
 \item{tumour_outfile}{File to save the tumour counts to}
 
+\item{samplename}{Parameter specifying the samplename to be used for matching the right column in the VCF}
+
 \item{normal_outfile}{Optional parameter specifying where the normal output should go}
 
 \item{refence_genome}{Optional parameter specifying the reference genome build used}
-
-\item{samplename}{Optional parameter specifying the samplename to be used for matching the right column in the VCF}
 }
 \description{
 Dump allele counts stored in the info column of the VCF file. Output will go into a file
 supplied as tumour_outfile. It will be a fully formatted allele counts file as returned
-by alleleCounter. There are no counts for the matched normal.
-}
-\details{
-TODO: The samplename should be made mandatory and matched in the VCF file
+by alleleCounter.
 }
 \author{
 sd11

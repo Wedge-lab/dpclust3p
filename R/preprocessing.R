@@ -288,7 +288,7 @@ dumpCounts.Muse = function(vcf_infile, tumour_outfile, normal_outfile=NA, refenc
   dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="muse", normal_outfile=normal_outfile, refence_genome=refence_genome, samplename=samplename)
 }
 
-#' Dump allele counts from vcf - ICGC pancancer consensus pipeline
+#' Dump allele counts from vcf - ICGC pancancer consensus SNV pipeline
 #'
 #' Dump allele counts stored in the info column of the VCF file. Output will go into a file
 #' supplied as tumour_outfile. It will be a fully formatted allele counts file as returned 
@@ -300,8 +300,22 @@ dumpCounts.Muse = function(vcf_infile, tumour_outfile, normal_outfile=NA, refenc
 #' @param samplename Optional parameter specifying the samplename to be used for matching the right column in the VCF
 #' @author sd11
 #' @export
-dumpCounts.ICGCconsensus = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19", samplename=NA) {
-  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="icgc_consensus", normal_outfile=normal_outfile, refence_genome=refence_genome, samplename=samplename)
+dumpCounts.ICGCconsensusSNV = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19", samplename=NA) {
+  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="icgc_consensus_snv", normal_outfile=normal_outfile, refence_genome=refence_genome, samplename=samplename)
+}
+
+#' Dump allele counts from vcf - ICGC pancancer consensus indel pipeline
+#'
+#' Dump allele counts stored in the info column of the VCF file. Output will go into a file
+#' supplied as tumour_outfile. It will be a fully formatted allele counts file as returned 
+#' by alleleCounter. There are no counts for the matched normal. 
+#' @param vcf_infile The vcf file to read in
+#' @param tumour_outfile File to save the tumour counts to
+#' @param refence_genome Optional parameter specifying the reference genome build used
+#' @author sd11
+#' @export
+dumpCounts.ICGCconsensusIndel = function(vcf_infile, tumour_outfile, refence_genome="hg19") {
+  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="icgc_consensus_indel", normal_outfile=NA, refence_genome=refence_genome, samplename=NA)
 }
 
 #' Dump allele counts from vcf - Mutect
@@ -374,8 +388,11 @@ getCountsNormal = function(v, centre="sanger", samplename=NA) {
   } else if (centre=="broad") {
     print("The Broad ICGC pipeline does not report allele counts for the matched normal")
     q(save="no", status=1)
-  } else if (centre=="icgc_consensus") {
+  } else if (centre=="icgc_consensus_snv") {
     print("The ICGC consensus pipeline does not report allele counts for the matched normal")
+    q(save="no", status=1)
+  } else if (centre=="icgc_consensus_indel") {
+    print("The ICGC consensus indel pipeline does not report allele counts for the matched normal")
     q(save="no", status=1)
   } else if (centre=="mutect") {
     sample_col = which(colnames(VariantAnnotation::geno(v)$AD) == samplename)
@@ -405,8 +422,10 @@ getCountsTumour = function(v, centre="sanger", samplename=NA) {
     return (getAlleleCounts.MuSE(v, sample_col))
   } else if (centre=="broad") {
     return(getAlleleCounts.Broad(v, 1))
-  } else if (centre=="icgc_consensus") {
-    return(getAlleleCounts.ICGC_consensus(v))
+  } else if (centre=="icgc_consensus_snv") {
+    return(getAlleleCounts.ICGC_consensus_snv(v))
+  } else if (centre=="icgc_consensus_indel") {
+    return(getAlleleCounts.ICGC_consensus_indel(v))
   } else if (centre=="mutect") {
     sample_col = which(colnames(VariantAnnotation::geno(v)$AD) == samplename)
     return(getAlleleCounts.mutect(v, sample_col))
@@ -524,7 +543,7 @@ getAlleleCounts.Broad = function(v, sample_col) {
 #' @author sd11
 #' @noRd
 #' Note: If there are multiple ALT alleles this function will only take the first mentioned! 
-getAlleleCounts.ICGC_consensus = function(v) {
+getAlleleCounts.ICGC_consensus_snv = function(v) {
   count.alt = info(v)$t_alt_count
   count.ref = info(v)$t_ref_count
   allele.ref = as.character(VariantAnnotation::ref(v))
@@ -532,6 +551,25 @@ getAlleleCounts.ICGC_consensus = function(v) {
   
   output = construct_allelecounter_table(count.ref, count.alt, allele.ref, allele.alt)
   return(output)
+}
+
+#' Dump allele counts in ICGC consensus SNV format
+#' 
+#' This function fetches allele counts from the info field in the VCF file.
+#' 
+#' @param v The vcf file
+#' @param dummy_alt_allele Dummy base to use to encode the alt allele, the counts will be saved in the corresponding column
+#' @param dummy_ref_allele Dummy base to use to encode the ref allele, the counts will be saved in the corresponding column
+#' @return An array with 4 columns: Counts for A, C, G, T
+#' @author sd11
+#' @noRd
+#' Note: If there are multiple ALT alleles this function will only take the first mentioned! 
+getAlleleCounts.ICGC_consensus_indel = function(v, dummy_alt_allele="A", dummy_ref_allele="C") {
+  c = construct_allelecounter_table(info(v)$t_ref_count, 
+                                    info(v)$t_alt_count, 
+                                    rep(dummy_alt_allele, nrow(v)), 
+                                    rep(dummy_ref_allele, nrow(v)))
+  return(c)
 }
 
 #' Dump allele counts in Mutect format
