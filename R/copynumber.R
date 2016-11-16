@@ -45,6 +45,11 @@ collate_bb_subclones = function(samplename, bb_subclones_file, gender, outfile) 
     cndata = cndata[!cndata$chr=="X",]
   }
   
+  # Remove all segments witout a call
+  if (any(is.na(cndata$nMin1_A) | is.na(cndata$nMaj1_A))) {
+    cndata = cndata[!(is.na(cndata$nMin1_A) | is.na(cndata$nMaj1_A)),]
+  }
+  
   # Obtain the total copy number for each segment
   totalcn = rep(0, dim(cndata)[1])
   for (k in 1:nrow(cndata)) {
