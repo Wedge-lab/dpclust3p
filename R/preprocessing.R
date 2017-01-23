@@ -1001,6 +1001,18 @@ addYchromToBattenberg = function(subclone.data) {
 #' Main function that creates the DP input file. A higher level function should be called by users
 #' @noRd
 GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, is.male = F, out.dir = NULL, SNP.phase.file = NULL, mut.phase.file = NULL, adjust_male_y_chrom=F){
+
+  write_output = function(info, outputfile) {
+	  # convert GenomicRanges object to df
+	  df = data.frame(chr=as.data.frame(seqnames(info)),
+			  start=start(info)-1,
+			  end=end(info))
+          df = cbind(df, as.data.frame(elementMetadata(info)))
+          colnames(df)[1] = "chr"
+          df = df[with(df, order(chr)),]
+          print(head(df))
+          write.table(df, outputfile, sep="\t", row.names=F, quote=F)
+  }
   
   subclone.data = read.table(subclone.file,sep="\t",header=T,stringsAsFactors=F)
   # Add in the Y chrom if donor is male and Battenberg hasn't supplied it (BB returns X/Y ad multiple copies of X for men)
@@ -1045,6 +1057,14 @@ GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, 
   # convert MCN to subclonal fraction - tricky for amplified mutations
   info$subclonal.fraction = info$mutation.copy.number
   expected.burden.for.MCN = mutationCopyNumberToMutationBurden(rep(1,length(info)),info$subclonal.CN,cellularity)
+  info$no.chrs.bearing.mut = NA
+
+  # Check if any SNVs have a copy number state, if there are none we can stop here
+  if (all(is.na(info$nMaj1))) {
+	  write_output(info, outputfile)
+	  return()
+  }
+
   non.zero.indices = which(info$mut.count>0 & !is.na(expected.burden.for.MCN))
   #test for mutations in more than 1 copy
   p.vals = sapply(1:length(non.zero.indices),function(v,e,i){
@@ -1152,15 +1172,7 @@ GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, 
     info$no.chrs.bearing.mut[possible.zero.muts[del.indices]] = 0
   }
   
-  # convert GenomicRanges object to df
-  df = data.frame(chr=as.data.frame(seqnames(info)),
-                  start=start(info)-1,
-                  end=end(info))
-  df = cbind(df, as.data.frame(elementMetadata(info)))
-  colnames(df)[1] = "chr"
-  df = df[with(df, order(chr)),]
-  print(head(df))
-  write.table(df, outputfile, sep="\t", row.names=F, quote=F)
+  write_output(info, outputfile)
 }
 
 #' Convenience function to load the cellularity from a rho_and_psi file
