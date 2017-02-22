@@ -1,6 +1,66 @@
 ALLELECOUNTER = "alleleCounter"
 LINKAGEPULL = "Linkage_pull.pl"
 
+#' Concatenate split files
+#' 
+#' Convenience function to concatenate a series of files specified in a file of file names.
+#' This function assumes all files have the same layout.
+#' @param fofn A file of file names to be concatenated
+#' @param inputdir Full path to where the input files are stored
+#' @param outfile Full path to where the output should be written
+#' @param haveHeader Boolean that specifies whether the input files have a header
+#' @author sd11
+#' @export
+concat_files = function(fofn, inputdir, outfile, haveHeader) {
+  
+  inputdir = paste(inputdir,"/", sep="")
+  list_of_files = read.table(fofn, stringsAsFactors=F, header=F)[,1]
+  
+  output = data.frame()
+  for (infile in list_of_files) {
+    infile = paste(inputdir, infile, sep="")
+    # Check if file is there and it contains data
+    if (file.exists(infile) & file.info(infile)$size != 0) {
+      dat = read.delim(infile, header=haveHeader, quote=NULL, stringsAsFactors=F)
+      output = rbind(output, dat)
+    }
+  }
+  
+  write.table(output, file=outfile, col.names=haveHeader, row.names=F, sep="\t", quote=F)
+}
+
+#' Split a file per chromosome
+#'
+#' Convenience function to split an input file per chromosome. All it requires is that
+#' the infile has as first column chromosome specification. The output files will be named
+#' outdir/prefixCHROMNUMBERpostfix
+#' @param infile The file to be split
+#' @param prefix Prefix of the output file
+#' @param postfix Postfix of the output file
+#' @param outdir Directory where the output files are to be written
+#' @param chrom_file A simple list of chromosomes to be considered
+#' @author sd11
+#' @export
+split_by_chrom = function(infile, prefix, postfix, outdir, chrom_file) {
+  outdir = paste(outdir, "/", sep="")
+  
+  # Check if there are lines in the file, otherwise it will crash this script
+  if (file.info(infile)$size == 0) {
+    print("No lines in loci file")
+    q(save="no")
+  }
+  
+  loci = read.delim(infile, stringsAsFactors=F, header=F)
+  
+  chroms = read.delim(chrom_file, stringsAsFactors=F, header=F)
+  
+  for (i in 1:nrow(chroms)) {
+    selection = loci[loci[,1]==chroms[i,1],]
+    chrom_id = chroms[i,2]
+    write.table(selection, file=paste(outdir, prefix, chrom_id, postfix, sep=""), quote=F, row.names=F, col.names=F, sep="\t")
+  }
+}
+
 ############################################
 # VCF 2 LOCI
 ############################################
@@ -39,11 +99,9 @@ parseIgnore = function(ignore_file) {
 #' @param fai_file Reference genome index
 #' @param ign_file A file with chromosomes to be excluded from consideration
 #' @param outfile Where to store the output
-#' @param dummy_alt_allele The alt allele to store, supply when you want to override what is in the VCF (Default: NA)
-#' @param dummy_ref_allele The reference allele to store, supply when you want to override what is in the VCF (Default: NA)
 #' @author sd11
 #' @export
-vcf2loci = function(vcf_files, fai_file, ign_file, outfile, dummy_alt_allele=NA, dummy_ref_allele=NA) {
+vcf2loci = function(vcf_files, fai_file, ign_file, outfile) {
   fai = parseFai(fai_file)
   ign = parseIgnore(ign_file)
   allowed_chroms = which(!(fai$chromosome %in% ign$chromosome))
@@ -59,15 +117,6 @@ vcf2loci = function(vcf_files, fai_file, ign_file, outfile, dummy_alt_allele=NA,
     vcf.loci.sel = subset(vcf.loci, chromosome %in% fai$chromosome[allowed_chroms])
     combined.loci = rbind(combined.loci, vcf.loci.sel)
   }
-  
-  # Override the ref and alt alleles if desired
-  if (!is.na(dummy_alt_allele) & dummy_alt_allele!="NA") {
-    combined.loci$alt = dummy_alt_allele
-  }
-  if (!is.na(dummy_ref_allele) & dummy_ref_allele!="NA") {
-    combined.loci$ref = dummy_ref_allele
-  }
-  
   # Remove duplicate entries
   combined.loci = unique(combined.loci)
   write.table(combined.loci, col.names=F, quote=F, row.names=F, file=outfile, sep="\t")
@@ -133,7 +182,7 @@ filterForSignature = function(signature_anno_loci_file, signature_regex, outfile
 
 #' Convenience function that filters a with tri-nucleotide context annotated list of loci for 
 #' cytosine deaminase signature, or C>T at CpG.
-#' @param loci_file Filepath to a with tri-nucleotide context annotated loci
+#' @param signature_anno_loci_file Filepath to a with tri-nucleotide context annotated loci
 #' @param outfile Filepath to where to store the output.
 #' @param ref_genome Full path to an indexed reference genome fasta file
 #' @param trinucleotide_column Integer representing the column within the input file that contains the context
@@ -149,6 +198,385 @@ filterForDeaminase = function(loci_file, outfile, ref_genome, trinucleotide_colu
                      trinucleotide_column=trinucleotide_column, 
                      alt_alleles=c("T", "T", "A", "A"), 
                      alt_allele_column=alt_allele_column)
+}
+
+
+############################################
+# Allele counting
+############################################
+#' Run alleleCount
+#' 
+#' Count the alleles for specified locations in the loci file. Expects alleleCount binary in $PATH
+#' @param locifile A file with at least chromsome and position columns of the locations to be counted
+#' @param bam A bam file
+#' @param outfile Where to store the output
+#' @param min_baq The minimum base quality required for a read to be counted
+#' @param min_maq The minimum mapping quality required for a read to be counted
+#' @author sd11
+#' @export
+alleleCount = function(locifile, bam, outfile, min_baq=20, min_maq=35) {
+  cmd = paste(ALLELECOUNTER,
+              "-b", bam,
+              "-o", outfile,
+              "-l", locifile,
+              "-m", min_baq,
+              "-q", min_maq, sep=" ")
+  system(cmd, wait=T)
+}
+
+#' Dump allele counts from vcf - Sanger ICGC pancancer pipeline
+#'
+#' Dump allele counts stored in the sample columns of the VCF file. Output will go into a file
+#' supplied as tumour_outfile and optionally normal_outfile. It will be a fully formatted
+#' allele counts file as returned by alleleCounter.
+#' @param vcf_infile The vcf file to read in
+#' @param tumour_outfile File to save the tumour counts to
+#' @param normal_outfile Optional parameter specifying where the normal output should go
+#' @param refence_genome Optional parameter specifying the reference genome build used
+#' @param samplename Optional parameter specifying the samplename to be used for matching the right column in the VCF
+#' @author sd11
+#' @export
+dumpCounts.Sanger = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19", samplename=NA) {
+  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="sanger", normal_outfile=normal_outfile, refence_genome=refence_genome, samplename=samplename)
+}
+
+#' Dump allele counts from vcf - DKFZ ICGC pancancer pipeline
+#'
+#' Dump allele counts stored in the sample columns of the VCF file. Output will go into a file
+#' supplied as tumour_outfile and optionally normal_outfile. It will be a fully formatted
+#' allele counts file as returned by alleleCounter.
+#' @param vcf_infile The vcf file to read in
+#' @param tumour_outfile File to save the tumour counts to
+#' @param normal_outfile Optional parameter specifying where the normal output should go
+#' @param refence_genome Optional parameter specifying the reference genome build used
+#' @param samplename Optional parameter specifying the samplename to be used for matching the right column in the VCF
+#' @author sd11
+#' @export
+dumpCounts.DKFZ = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19", samplename=NA) {
+  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="dkfz", normal_outfile=normal_outfile, refence_genome=refence_genome, samplename=samplename)
+}
+
+#' Dump allele counts from vcf - Broad ICGC pancancer pipeline
+#'
+#' Dump allele counts stored in the sample columns of the VCF file. Output will go into a file
+#' supplied as tumour_outfile and optionally normal_outfile. It will be a fully formatted
+#' allele counts file as returned by alleleCounter.
+#' @param vcf_infile The vcf file to read in
+#' @param tumour_outfile File to save the tumour counts to
+#' @param normal_outfile Optional parameter specifying where the normal output should go
+#' @param refence_genome Optional parameter specifying the reference genome build used
+#' @param samplename Optional parameter specifying the samplename to be used for matching the right column in the VCF
+#' @author sd11
+#' @export
+dumpCounts.Broad = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19", samplename=NA) {
+  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="broad", normal_outfile=normal_outfile, refence_genome=refence_genome, samplename=samplename)
+}
+
+#' Dump allele counts from vcf - MuSE ICGC pancancer pipeline
+#'
+#' Dump allele counts stored in the sample columns of the VCF file. Output will go into a file
+#' supplied as tumour_outfile and optionally normal_outfile. It will be a fully formatted
+#' allele counts file as returned by alleleCounter.
+#' @param vcf_infile The vcf file to read in
+#' @param tumour_outfile File to save the tumour counts to
+#' @param normal_outfile Optional parameter specifying where the normal output should go
+#' @param refence_genome Optional parameter specifying the reference genome build used
+#' @param samplename Optional parameter specifying the samplename to be used for matching the right column in the VCF
+#' @author sd11
+#' @export
+dumpCounts.Muse = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19", samplename=NA) {
+  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="muse", normal_outfile=normal_outfile, refence_genome=refence_genome, samplename=samplename)
+}
+
+#' Dump allele counts from vcf - ICGC pancancer consensus pipeline
+#'
+#' Dump allele counts stored in the info column of the VCF file. Output will go into a file
+#' supplied as tumour_outfile. It will be a fully formatted allele counts file as returned 
+#' by alleleCounter. There are no counts for the matched normal. 
+#' @param vcf_infile The vcf file to read in
+#' @param tumour_outfile File to save the tumour counts to
+#' @param normal_outfile Optional parameter specifying where the normal output should go
+#' @param refence_genome Optional parameter specifying the reference genome build used
+#' @param samplename Optional parameter specifying the samplename to be used for matching the right column in the VCF
+#' @author sd11
+#' @export
+dumpCounts.ICGCconsensus = function(vcf_infile, tumour_outfile, normal_outfile=NA, refence_genome="hg19", samplename=NA) {
+  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="icgc_consensus", normal_outfile=normal_outfile, refence_genome=refence_genome, samplename=samplename)
+}
+
+#' Dump allele counts from vcf - Mutect
+#'
+#' Dump allele counts stored in the info column of the VCF file. Output will go into a file
+#' supplied as tumour_outfile. It will be a fully formatted allele counts file as returned 
+#' by alleleCounter.
+#' @param vcf_infile The vcf file to read in
+#' @param tumour_outfile File to save the tumour counts to
+#' @param samplename Parameter specifying the samplename to be used for matching the right column in the VCF
+#' @param normal_outfile Optional parameter specifying where the normal output should go
+#' @param refence_genome Optional parameter specifying the reference genome build used
+#' @author sd11
+#' @export
+dumpCounts.mutect = function(vcf_infile, tumour_outfile, samplename, normal_outfile=NA, refence_genome="hg19") {
+  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="mutect", normal_outfile=normal_outfile, refence_genome=refence_genome, samplename=samplename)
+}
+
+#' Dump allele counts from VCF
+#' 
+#' This function implements all the steps required for dumping counts from VCF
+#' as supplied by the ICGC pancancer pipelines. 
+#' @noRd
+dumpCountsFromVcf = function(vcf_infile, tumour_outfile, centre, normal_outfile=NA, refence_genome="hg19", samplename=NA) {
+  # Helper function for writing the output  
+  write.output = function(output, output_file) {
+    write.table(output, file=output_file, col.names=T, quote=F, row.names=F, sep="\t")
+  }
+  
+  # Read in the vcf and dump the tumour counts in the right format
+  v = VariantAnnotation::readVcf(vcf_infile, refence_genome)
+  tumour = getCountsTumour(v, centre=centre, samplename=samplename)
+  tumour = formatOutput(tumour, v)
+  write.output(tumour, tumour_outfile)
+  
+  # Optionally dump the normal counts in the right format
+  if (!is.na(normal_outfile)) {
+    normal = getCountsNormal(v, centre=centre, samplename=samplename)
+    normal = formatOutput(normal, v)
+    write.output(normal, normal_outfile)
+  }
+}
+
+#' Format a 4 column counts table into the alleleCounter format. This function assumes A, C, G, T format.
+#' @noRd
+formatOutput = function(counts_table, v) {
+  output = data.frame(as.character(seqnames(v)), start(ranges(v)), counts_table, rowSums(counts_table))
+  colnames(output) = c("#CHR","POS","Count_A","Count_C","Count_G","Count_T","Good_depth")
+  return(output)
+}
+
+#' Dump allele counts from vcf for normal
+#' 
+#' Returns an allele counts table for the normal sample
+#' @param v The vcf file
+#' @param centre The sequencing centre of which pipeline the vcf file originates
+#' @return An array with 4 columns: Counts for A, C, G, T
+#' @author sd11
+#' @noRd
+getCountsNormal = function(v, centre="sanger", samplename=NA) {
+  if (centre=="sanger") {
+    return(getAlleleCounts.Sanger(v, 1))
+  } else if(centre=="dkfz") {
+    sample_col = which(colnames(VariantAnnotation::geno(v)$DP4) == "CONTROL")
+    return(getAlleleCounts.DKFZ(v, sample_col))
+  } else if (centre=="muse") {
+    # Assuming the tumour name is provided
+    sample_col = which(colnames(VariantAnnotation::geno(v)$AD) != samplename)
+    return (getAlleleCounts.MuSE(v, sample_col))
+  } else if (centre=="broad") {
+    print("The Broad ICGC pipeline does not report allele counts for the matched normal")
+    q(save="no", status=1)
+  } else if (centre=="icgc_consensus") {
+    print("The ICGC consensus pipeline does not report allele counts for the matched normal")
+    q(save="no", status=1)
+  } else if (centre=="mutect") {
+    sample_col = which(colnames(VariantAnnotation::geno(v)$AD) == samplename)
+    return(getAlleleCounts.mutect(v, sample_col))
+  } else {
+    print(paste("Supplied centre not supported:", centre))
+    q(save="no", status=1)
+  }
+}
+
+#' Dump allele counts from vcf for tumour
+#' 
+#' Returns an allele counts table for the tumour sample
+#' @param v The vcf file
+#' @param centre The sequencing centre of which pipeline the vcf file originates
+#' @return An array with 4 columns: Counts for A, C, G, T
+#' @author sd11
+#' @noRd
+getCountsTumour = function(v, centre="sanger", samplename=NA) {
+  if (centre=="sanger") {
+    return(getAlleleCounts.Sanger(v, 2))
+  } else if (centre=="dkfz") {
+    sample_col = which(colnames(VariantAnnotation::geno(v)$DP4) == "TUMOR")
+    return(getAlleleCounts.DKFZ(v, sample_col))
+  } else if (centre=="muse") {
+    sample_col = which(colnames(VariantAnnotation::geno(v)$AD) == samplename)
+    return (getAlleleCounts.MuSE(v, sample_col))
+  } else if (centre=="broad") {
+    return(getAlleleCounts.Broad(v, 1))
+  } else if (centre=="icgc_consensus") {
+    return(getAlleleCounts.ICGC_consensus(v))
+  } else if (centre=="mutect") {
+    sample_col = which(colnames(VariantAnnotation::geno(v)$AD) == samplename)
+    return(getAlleleCounts.mutect(v, sample_col))
+  } else {
+    print(paste("Supplied centre not supported:", centre))
+    q(save="no", status=1)
+  }
+}
+
+#' Dump allele counts from Sanger pipeline vcf
+#' 
+#' Helper function that dumps the allele counts from a Sanger pipeline VCF file
+#' @param v The vcf file
+#' @param sample_col The column in which the counts are. If it's the first sample mentioned in the vcf this would be sample_col 1
+#' @return An array with 4 columns: Counts for A, C, G, T
+#' @author sd11
+#' @noRd
+getAlleleCounts.Sanger = function(v, sample_col) {
+  return(cbind(VariantAnnotation::geno(v)$FAZ[,sample_col]+VariantAnnotation::geno(v)$RAZ[,sample_col], 
+               VariantAnnotation::geno(v)$FCZ[,sample_col]+VariantAnnotation::geno(v)$RCZ[,sample_col], 
+               VariantAnnotation::geno(v)$FGZ[,sample_col]+VariantAnnotation::geno(v)$RGZ[,sample_col], 
+               VariantAnnotation::geno(v)$FTZ[,sample_col]+VariantAnnotation::geno(v)$RTZ[,sample_col]))
+}
+
+#' Dump allele counts from the DKFZ pipeline
+#' 
+#' Helper function that takes a sample column and fetches allele counts. As the DKFZ pipeline does not
+#' provide counts for each base, but just the alt and reference, we will provide just those and the
+#' other bases with 0s.
+#' 
+#' Note: If there are multiple ALT alleles this function will only take the first mentioned!
+#' @param v The vcf file
+#' @param sample_col The column in which the counts are. If it's the first sample mentioned in the vcf this would be sample_col 1
+#' @return An array with 4 columns: Counts for A, C, G, T
+#' @author sd11
+#' @noRd
+getAlleleCounts.DKFZ = function(v, sample_col) {
+  # Fetch counts for both forward and reverse ref/alt
+  counts = VariantAnnotation::geno(v)$DP4[,sample_col,]
+  counts.ref = counts[,1] + counts[,2] # ref forward/reverse
+  counts.alt = counts[,3] + counts[,4] # alt forward/reverse
+  allele.ref = as.character(VariantAnnotation::ref(v))
+  allele.alt = unlist(lapply(VariantAnnotation::alt(v), function(x) { as.character(x[[1]]) }))
+  
+  output = construct_allelecounter_table(count.ref, count.alt, allele.ref, allele.alt)
+  return(output)
+}
+
+#' Dump allele counts from the MuSE pipeline
+#' 
+#' Helper function that takes a sample column and fetches allele counts. As the MuSE pipeline does not
+#' provide counts for each base, but just the alt and reference, we will provide just those and the
+#' other bases with 0s.
+#' 
+#' Note: If there are multiple ALT alleles this function will only take the first mentioned! 
+#' Note2: This function assumes there are only two columns with read counts. The format allows for more
+#' @param v The vcf file
+#' @param sample_col The column in which the counts are. If it's the first sample mentioned in the vcf this would be sample_col 1
+#' @return An array with 4 columns: Counts for A, C, G, T
+#' @author sd11
+#' @noRd
+getAlleleCounts.MuSE = function(v, sample_col) {
+  if (length(colnames(VariantAnnotation::geno(v)$AD)) > 2) {
+    print("In getAlleleCounts.MuSE: Assuming 2 columns with read counts, but found more. This is not supported")
+    q(save="no", status=1)
+  }
+
+  # An SNV can be represented by more than 1 alt alleles, here we pick the alt allele with the highest read count
+  num.snvs = nrow(VariantAnnotation::geno(v)$AD)
+  counts = array(NA, c(num.snvs, 2))
+  allele.alt = array(NA, num.snvs)
+  for (i in 1:num.snvs) {
+	snv.counts = unlist(VariantAnnotation::geno(v)$AD[i,sample_col])
+  	counts[i,1] = snv.counts[1] # The reference is the first base for which read counts are mentioned
+	select_base = which.max(snv.counts[2:length(snv.counts)])
+	allele.alt[i] = as.character(VariantAnnotation::alt(v)[[i]][select_base])
+	select_base = select_base+1 # The reference is the first base for which read counts are mentioned
+	counts[i,2] = snv.counts[select_base] 
+  }
+
+  allele.ref = as.character(VariantAnnotation::ref(v))
+  
+  output = construct_allelecounter_table(counts[i,1], counts[i,2], allele.ref, allele.alt)
+  return(output)
+}
+
+#' Dump allele counts from the Broad pipeline
+#' 
+#' Helper function that takes a sample column and fetches allele counts. As the Broad pipeline does not
+#' provide counts for each base, but just the alt and reference, we will provide just those and the
+#' other bases with 0s.
+#' 
+#' Note: If there are multiple ALT alleles this function will only take the first mentioned! 
+#' @param v The vcf file
+#' @param sample_col The column in which the counts are. If it's the first sample mentioned in the vcf this would be sample_col 1
+#' @return An array with 4 columns: Counts for A, C, G, T
+#' @author sd11
+#' @noRd
+getAlleleCounts.Broad = function(v, sample_col) {
+  count.ref = as.numeric(unlist(VariantAnnotation::geno(v)$ref_count))
+  count.alt = as.numeric(unlist(VariantAnnotation::geno(v)$alt_count))
+  allele.ref = as.character(VariantAnnotation::ref(v))
+  allele.alt = unlist(lapply(VariantAnnotation::alt(v), function(x) { as.character(x[[1]]) }))
+  
+  output = construct_allelecounter_table(count.ref, count.alt, allele.ref, allele.alt)
+  return(output)
+}
+
+#' Dump allele counts in ICGC consensus SNV format
+#' 
+#' This function fetches allele counts from the info field in the VCF file.
+#' 
+#' @param v The vcf file
+#' @return An array with 4 columns: Counts for A, C, G, T
+#' @author sd11
+#' @noRd
+#' Note: If there are multiple ALT alleles this function will only take the first mentioned! 
+getAlleleCounts.ICGC_consensus = function(v) {
+  count.alt = info(v)$t_alt_count
+  count.ref = info(v)$t_ref_count
+  allele.ref = as.character(VariantAnnotation::ref(v))
+  allele.alt = unlist(lapply(VariantAnnotation::alt(v), function(x) { as.character(x[[1]]) }))
+  
+  output = construct_allelecounter_table(count.ref, count.alt, allele.ref, allele.alt)
+  return(output)
+}
+
+#' Dump allele counts in Mutect format
+#' 
+#' This function fetches allele counts from the info field in the VCF file.
+#' 
+#' @param v The vcf file
+#' @param sample_col The column in which the counts are. If it's the first sample mentioned in the vcf this would be sample_col 1
+#' @return An array with 4 columns: Counts for A, C, G, T
+#' @author sd11
+#' @noRd
+#' Note: If there are multiple ALT alleles this function will only take the first mentioned! 
+getAlleleCounts.mutect = function(v, sample_col) {
+  counts = do.call(rbind, geno(v)$AD[,sample_col])
+  count.ref = counts[,1]
+  count.alt = counts[,2]
+  allele.ref = as.character(VariantAnnotation::ref(v))
+  allele.alt = unlist(lapply(VariantAnnotation::alt(v), function(x) { as.character(x[[1]]) }))
+  output = construct_allelecounter_table(count.ref, count.alt, allele.ref, allele.alt)
+  return(output)
+}
+
+#' Function that constructs a table in the format of the allele counter
+#' @param count.ref Number of reads supporting the reference allele
+#' @param count.alt Number of reads supporting the variant allele
+#' @param allele.ref The reference allele
+#' @param allele.alt The variant allele
+#' @return A data.frame consisting of four columns: Reads reporting A, C, G and T
+#' @author sd11
+#' @noRd
+construct_allelecounter_table = function(count.ref, count.alt, allele.ref, allele.alt) {
+  output = array(0, c(length(allele.ref), 4))
+  nucleotides = c("A", "C", "G", "T")
+  # Propagate the alt allele counts
+  nucleo.index = match(allele.alt, nucleotides)
+  for (i in 1:nrow(output)) {
+    output[i,nucleo.index[i]] = count.alt[i]
+  }
+  
+  # Propagate the reference allele counts
+  nucleo.index = match(allele.ref, nucleotides)
+  for (i in 1:nrow(output)) {
+    output[i,nucleo.index[i]] = count.ref[i]
+  }
+  return(output)
 }
 
 ############################################
@@ -173,74 +601,74 @@ run_linkage_pull_mut = function(output, loci_file, bam_file, bai_file) {
   return(count.data)
 }
 
-#' Phase mutation to mutation
-#' 
-#' Run mutation to mutation phasing. This function requires the Linkage_pull.pl script in $PATH.
-#' @param loci_file A list of loci
-#' @param phased_file File to save the output
-#' @param bam_file Full path to the bam file
-#' @param bai_file Full path to the bai file
-#' @param max_distance The max distance of a mutation and SNP can be apart to be considered for phasing
-#' @author sd11, dw9
-#' @export
-mut_mut_phasing = function(loci_file, phased_file, bam_file, bai_file, max_distance) {
-  # Check if there are lines in the file, otherwise it will crash this script
-  if (file.info(loci_file)$size == 0) {
-    print("No lines in loci file")
-    q(save="no")
-  }
-  
-  # TODO: this must be removed
-  chr.names = c(1:22,"X","Y")
-  
-  muts <- read.delim(loci_file, header=F, row.names=NULL, stringsAsFactors=F)
-  names(muts) = c("CHR","POSITION","WT","MT")
-  muts = muts[order(match(muts$CHR,chr.names),muts$POSITION),]
-  
-  # # TODO: Does this work with X and Y ??
-  # if (!is.null(chrom)) {
-  #   muts = muts[muts$CHR==chrom,]
-  # }
-  
-  # Pairwise comparison of all muts, only take those that are close to eachother
-  output <- data.frame(Chr = vector(mode="character",length=0), Pos1 = vector(mode="numeric",length=0), Ref1 = vector(mode="character",length=0), Var1 = vector(mode="character",length=0), Pos2 = vector(mode="numeric",length=0), Ref2 = vector(mode="character",length=0), Var2 = vector(mode="character",length=0))
-  for(chr in chr.names){
-    chr.muts = muts[muts$CHR==chr,]
-    no.muts = nrow(chr.muts)
-    for(i in 1:(no.muts-1)){
-      dist = chr.muts$POSITION[(i+1):no.muts] - chr.muts$POSITION[i]
-      inds = which(dist <= max_distance) # 700
-      if(length(inds)>0){
-        output <- rbind(output,data.frame(Chr = chr, Pos1 = chr.muts$POSITION[i], Ref1 = chr.muts$WT[i], Var1 = chr.muts$MT[i], Pos2 = chr.muts$POSITION[i+inds], Ref2 = chr.muts$WT[i+inds], Var2 = chr.muts$MT[i+inds]))
-      }
-    }
-  }
-  
-  if (nrow(output) > 0) {
-    # Run linkage pull on the chromosome locations mentioned in the data.frame output
-    count.data = run_linkage_pull_mut(output, loci_file, bam_file, bai_file)
-    
-    # Categorise pairs of mutations
-    count.data$phasing = NA
-    for(h in 1:nrow(count.data)){
-      counts = count.data[h,8:11]
-      print(counts) 
-      if(counts[2]>0 & counts[3]+counts[4] == 0){
-        count.data$phasing[h]="phased"
-        #}else if(counts[2]==0 & counts[3]+counts[4] > 0){
-        #require BOTH WT-mut and mut-WT pairs
-      }else if(counts[2]==0 & counts[3]>0 & counts[4]>0){  
-        count.data$phasing[h]="anti-phased"
-      }else if(counts[2]>0 && counts[3]>0 && counts[4]==0){
-        count.data$phasing[h]="clone-subclone"
-      }else if(counts[2]>0 && counts[3]==0 && counts[4]>0){
-        count.data$phasing[h]="subclone-clone"
-      }  
-    }
-    
-    write.table(count.data[!is.na(count.data$phasing),],phased_file,sep="\t",quote=F,row.names=F)
-  }
-}
+#' #' Phase mutation to mutation
+#' #' 
+#' #' Run mutation to mutation phasing. This function requires the Linkage_pull.pl script in $PATH.
+#' #' @param loci_file A list of loci
+#' #' @param phased_file File to save the output
+#' #' @param bam_file Full path to the bam file
+#' #' @param bai_file Full path to the bai file
+#' #' @param max_distance The max distance of a mutation and SNP can be apart to be considered for phasing
+#' #' @author sd11, dw9
+#' #' @export
+#' mut_mut_phasing = function(loci_file, phased_file, bam_file, bai_file, max_distance) {
+#'   # Check if there are lines in the file, otherwise it will crash this script
+#'   if (file.info(loci_file)$size == 0) {
+#'     print("No lines in loci file")
+#'     q(save="no")
+#'   }
+#'   
+#'   # TODO: this must be removed
+#'   chr.names = c(1:22,"X","Y")
+#'   
+#'   muts <- read.delim(loci_file, header=F, row.names=NULL, stringsAsFactors=F)
+#'   names(muts) = c("CHR","POSITION","WT","MT")
+#'   muts = muts[order(match(muts$CHR,chr.names),muts$POSITION),]
+#'   
+#'   # # TODO: Does this work with X and Y ??
+#'   # if (!is.null(chrom)) {
+#'   #   muts = muts[muts$CHR==chrom,]
+#'   # }
+#'   
+#'   # Pairwise comparison of all muts, only take those that are close to eachother
+#'   output <- data.frame(Chr = vector(mode="character",length=0), Pos1 = vector(mode="numeric",length=0), Ref1 = vector(mode="character",length=0), Var1 = vector(mode="character",length=0), Pos2 = vector(mode="numeric",length=0), Ref2 = vector(mode="character",length=0), Var2 = vector(mode="character",length=0))
+#'   for(chr in chr.names){
+#'     chr.muts = muts[muts$CHR==chr,]
+#'     no.muts = nrow(chr.muts)
+#'     for(i in 1:(no.muts-1)){
+#'       dist = chr.muts$POSITION[(i+1):no.muts] - chr.muts$POSITION[i]
+#'       inds = which(dist <= max_distance) # 700
+#'       if(length(inds)>0){
+#'         output <- rbind(output,data.frame(Chr = chr, Pos1 = chr.muts$POSITION[i], Ref1 = chr.muts$WT[i], Var1 = chr.muts$MT[i], Pos2 = chr.muts$POSITION[i+inds], Ref2 = chr.muts$WT[i+inds], Var2 = chr.muts$MT[i+inds]))
+#'       }
+#'     }
+#'   }
+#'   
+#'   if (nrow(output) > 0) {
+#'     # Run linkage pull on the chromosome locations mentioned in the data.frame output
+#'     count.data = run_linkage_pull_mut(output, loci_file, bam_file, bai_file)
+#'     
+#'     # Categorise pairs of mutations
+#'     count.data$phasing = NA
+#'     for(h in 1:nrow(count.data)){
+#'       counts = count.data[h,8:11]
+#'       print(counts) 
+#'       if(counts[2]>0 & counts[3]+counts[4] == 0){
+#'         count.data$phasing[h]="phased"
+#'         #}else if(counts[2]==0 & counts[3]+counts[4] > 0){
+#'         #require BOTH WT-mut and mut-WT pairs
+#'       }else if(counts[2]==0 & counts[3]>0 & counts[4]>0){  
+#'         count.data$phasing[h]="anti-phased"
+#'       }else if(counts[2]>0 && counts[3]>0 && counts[4]==0){
+#'         count.data$phasing[h]="clone-subclone"
+#'       }else if(counts[2]>0 && counts[3]==0 && counts[4]>0){
+#'         count.data$phasing[h]="subclone-clone"
+#'       }  
+#'     }
+#'     
+#'     write.table(count.data[!is.na(count.data$phasing),],phased_file,sep="\t",quote=F,row.names=F)
+#'   }
+#' }
 
 ############################################
 # MUT 2 CN phasing
@@ -269,117 +697,117 @@ run_linkage_pull_snp = function(loci_file, bam_file, bai_file, chr, pos1, ref1, 
   return(linked.muts)
 }
 
-#' Phase mutation to SNP/copy number
-#' 
-#' Run mutation to copy number phasing. This function requires the Linkage_pull.pl script in $PATH.
-#' Note: This function should either be run separately per chromosome and then combined with \code{\link{concat_files}}
-#' or on all chromsomes in one go, but then the _allHaplotypeInfo.txt Battenberg files need to be concatenated first.
-#' @param loci_file A list of loci
-#' @param phased_file The .BAFsegmented.txt output file from Battenberg
-#' @param hap_file Path to the _allHaplotypeInfo.txt Battenberg output file to be used
-#' @param bam_file Full path to the bam file
-#' @param bai_file Full path to the bai file
-#' @param outfile File to save the output
-#' @param max_distance The max distance of a mutation and SNP can be apart to be considered for phasing
-#' @author sd11, dw9
-#' @export
-mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, outfile, max_distance) {
-  
-  if (file.info(loci_file)$size == 0) {
-    linked.muts = data.frame(matrix(rep(NA, 13), nrow=1))
-    colnames(linked.muts) = c("Chr","Pos1","Ref1","Var1","Pos2","Ref2","Var2","AF","AFphased","Num_linked_to_A","Num_linked_to_C","Num_linked_to_G","Num_linked_to_T")
-    linked.muts = na.omit(linked.muts)
-  } else if(nrow(read.delim(loci_file, header=F, stringsAsFactors=F, fill=T))==0) {
-    linked.muts = data.frame(matrix(rep(NA, 13), nrow=1))
-    colnames(linked.muts) = c("Chr","Pos1","Ref1","Var1","Pos2","Ref2","Var2","AF","AFphased","Num_linked_to_A","Num_linked_to_C","Num_linked_to_G","Num_linked_to_T")
-    linked.muts = na.omit(linked.muts)
-  } else {
-    # TODO: is this filtering required when just supplying loci files from a single chromosome?
-    chr.muts = read.delim(loci_file, header=F, stringsAsFactors=F, fill=T)
-    names(chr.muts) = c("CHR","POSITION","REF_BASE","MUT_BASE")
-    
-    # Match phased SNPs and their haplotypes together
-    phased = read.delim(phased_file, header=T, stringsAsFactors=F, quote="\"")
-    # Compatible with both BB setups that have row.names and those that don't
-    if (ncol(phased) == 6) {
-      colnames(phased) = c("SNP", "Chr","Pos", "AF", "AFphased", "AFsegmented")
-    } else {
-      colnames(phased) = c("Chr","Pos", "AF", "AFphased", "AFsegmented")
-    }
-    
-    # TODO: check that chromosomes are using the same names between loci and phased files
-    phased = phased[phased$Chr %in% chr.muts$CHR,]
-    
-    hap.info = read.delim(hap_file, sep=" ", header=F, row.names=NULL, stringsAsFactors=F)
-    # Compatible with both BB setups that have row.names and those that don't
-    if (ncol(hap.info) == 7) {
-      colnames(hap.info) = c("SNP","dbSNP","pos","ref","mut","ref_count","mut_count")
-    } else {
-      colnames(hap.info) = c("dbSNP","pos","ref","mut","ref_count","mut_count")
-    }
-    # get haplotypes that match phased heterozygous SNPs
-    hap.info = hap.info[match(phased$Pos,hap.info$pos),]
-    
-    # Synchronise dfs in case some SNPs are not in hap.info
-    selection = !is.na(hap.info$pos)
-    hap.info = hap.info[selection,]
-    phased = phased[selection,]
-    
-    #220212
-    #phased$AF[hap.info$ref_count==1] = 1-phased$AF[hap.info$ref_count==1]
-    phased$Ref = hap.info$ref
-    phased$Var = hap.info$mut
-    
-    # Annotate the chr.muts df with the min abs distance to a phased SNP
-    chr.muts$dist = sapply(1:dim(chr.muts)[1], function(i,p,m) min(abs(p$Pos - m$POSITION[i])), p=phased, m=chr.muts)
-    chr.muts$snp.index = sapply(1:dim(chr.muts)[1], function(i,p,m) which.min(abs(p$Pos - m$POSITION[i])), p=phased, m=chr.muts)
-    # Use only those to a SNP
-    muts <- chr.muts[chr.muts$dist < max_distance,] #700
-    snps <- phased[muts$snp.index,]
-    
-    linked.muts = run_linkage_pull_snp(loci_file, bam_file, bai_file, muts$CHR, muts$POSITION, muts$REF_BASE, muts$MUT_BASE, snps$Pos, snps$Ref, snps$Var, snps$AF, snps$AFphased)
-    
-    # Categorise where the mutation is with respect to the CN event
-    ACGT = 10:13
-    names(ACGT) <- c("A", "C", "G", "T")
-    linked.muts$Parental <- rep(NA, dim(linked.muts)[1])
-    if (nrow(linked.muts) > 0) {
-      for (i in 1:nrow(linked.muts)) {
-        
-        # Fetch allele frequency
-        af = linked.muts$AF[i]
-        # Get number of reads covering the ref mutation allele
-        ref_count = hap.info[hap.info$pos==linked.muts$Pos2[i],]$ref_count
-        # Get number of reads covering the alt mutation allele
-        alt_count = hap.info[hap.info$pos==linked.muts$Pos2[i],]$mut_count
-        # Number of reads covering SNP allele A, that also cover mutation alt
-        linked_to_A = linked.muts[i,ACGT[linked.muts$Ref2[i]]]
-        # Number of reads covering SNP allele B, that also cover mutation alt
-        linked_to_B = linked.muts[i,ACGT[linked.muts$Var2[i]]]
-        
-        if (af < 0.5 & alt_count==1 & linked_to_A > 0 & linked_to_B == 0) {
-          linked.muts$Parental[i] = "MUT_ON_DELETED"
-        } else if (af < 0.5 & alt_count==1 & linked_to_A == 0 & linked_to_B > 0) {
-          linked.muts$Parental[i] = "MUT_ON_RETAINED"
-        } else if (af > 0.5 & alt_count==1 & linked_to_A > 0 & linked_to_B == 0) {
-          linked.muts$Parental[i] = "MUT_ON_RETAINED"
-        } else if (af > 0.5 & alt_count==1 & linked_to_A == 0 & linked_to_B > 0) {
-          linked.muts$Parental[i] = "MUT_ON_DELETED"
-        } else if (af > 0.5 & ref_count==1 & linked_to_A > 0 & linked_to_B == 0) {
-          linked.muts$Parental[i] = "MUT_ON_DELETED"
-        } else if (af > 0.5 & ref_count==1 & linked_to_A == 0 & linked_to_B > 0) {
-          linked.muts$Parental[i] = "MUT_ON_RETAINED"
-        } else if (af < 0.5 & ref_count==1 & linked_to_A > 0 & linked_to_B == 0) {
-          linked.muts$Parental[i] = "MUT_ON_RETAINED"
-        } else if (af < 0.5 & ref_count==1 & linked_to_A == 0 & linked_to_B > 0) {
-          linked.muts$Parental[i] = "MUT_ON_DELETED"
-        }
-      }
-    }
-  }
-  
-  write.table(linked.muts,outfile, sep="\t", quote=F, row.names=F)
-}
+#' #' Phase mutation to SNP/copy number
+#' #' 
+#' #' Run mutation to copy number phasing. This function requires the Linkage_pull.pl script in $PATH.
+#' #' Note: This function should either be run separately per chromosome and then combined with \code{\link{concat_files}}
+#' #' or on all chromsomes in one go, but then the _allHaplotypeInfo.txt Battenberg files need to be concatenated first.
+#' #' @param loci_file A list of loci
+#' #' @param phased_file The .BAFsegmented.txt output file from Battenberg
+#' #' @param hap_file Path to the _allHaplotypeInfo.txt Battenberg output file to be used
+#' #' @param bam_file Full path to the bam file
+#' #' @param bai_file Full path to the bai file
+#' #' @param outfile File to save the output
+#' #' @param max_distance The max distance of a mutation and SNP can be apart to be considered for phasing
+#' #' @author sd11, dw9
+#' #' @export
+#' mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, outfile, max_distance) {
+#'   
+#'   if (file.info(loci_file)$size == 0) {
+#'     linked.muts = data.frame(matrix(rep(NA, 13), nrow=1))
+#'     colnames(linked.muts) = c("Chr","Pos1","Ref1","Var1","Pos2","Ref2","Var2","AF","AFphased","Num_linked_to_A","Num_linked_to_C","Num_linked_to_G","Num_linked_to_T")
+#'     linked.muts = na.omit(linked.muts)
+#'   } else if(nrow(read.delim(loci_file, header=F, stringsAsFactors=F, fill=T))==0) {
+#'     linked.muts = data.frame(matrix(rep(NA, 13), nrow=1))
+#'     colnames(linked.muts) = c("Chr","Pos1","Ref1","Var1","Pos2","Ref2","Var2","AF","AFphased","Num_linked_to_A","Num_linked_to_C","Num_linked_to_G","Num_linked_to_T")
+#'     linked.muts = na.omit(linked.muts)
+#'   } else {
+#'     # TODO: is this filtering required when just supplying loci files from a single chromosome?
+#'     chr.muts = read.delim(loci_file, header=F, stringsAsFactors=F, fill=T)
+#'     names(chr.muts) = c("CHR","POSITION","REF_BASE","MUT_BASE")
+#'     
+#'     # Match phased SNPs and their haplotypes together
+#'     phased = read.delim(phased_file, header=T, stringsAsFactors=F, quote="\"")
+#'     # Compatible with both BB setups that have row.names and those that don't
+#'     if (ncol(phased) == 6) {
+#'       colnames(phased) = c("SNP", "Chr","Pos", "AF", "AFphased", "AFsegmented")
+#'     } else {
+#'       colnames(phased) = c("Chr","Pos", "AF", "AFphased", "AFsegmented")
+#'     }
+#'     
+#'     # TODO: check that chromosomes are using the same names between loci and phased files
+#'     phased = phased[phased$Chr %in% chr.muts$CHR,]
+#'     
+#'     hap.info = read.delim(hap_file, sep=" ", header=F, row.names=NULL, stringsAsFactors=F)
+#'     # Compatible with both BB setups that have row.names and those that don't
+#'     if (ncol(hap.info) == 7) {
+#'       colnames(hap.info) = c("SNP","dbSNP","pos","ref","mut","ref_count","mut_count")
+#'     } else {
+#'       colnames(hap.info) = c("dbSNP","pos","ref","mut","ref_count","mut_count")
+#'     }
+#'     # get haplotypes that match phased heterozygous SNPs
+#'     hap.info = hap.info[match(phased$Pos,hap.info$pos),]
+#'     
+#'     # Synchronise dfs in case some SNPs are not in hap.info
+#'     selection = !is.na(hap.info$pos)
+#'     hap.info = hap.info[selection,]
+#'     phased = phased[selection,]
+#'     
+#'     #220212
+#'     #phased$AF[hap.info$ref_count==1] = 1-phased$AF[hap.info$ref_count==1]
+#'     phased$Ref = hap.info$ref
+#'     phased$Var = hap.info$mut
+#'     
+#'     # Annotate the chr.muts df with the min abs distance to a phased SNP
+#'     chr.muts$dist = sapply(1:dim(chr.muts)[1], function(i,p,m) min(abs(p$Pos - m$POSITION[i])), p=phased, m=chr.muts)
+#'     chr.muts$snp.index = sapply(1:dim(chr.muts)[1], function(i,p,m) which.min(abs(p$Pos - m$POSITION[i])), p=phased, m=chr.muts)
+#'     # Use only those to a SNP
+#'     muts <- chr.muts[chr.muts$dist < max_distance,] #700
+#'     snps <- phased[muts$snp.index,]
+#'     
+#'     linked.muts = run_linkage_pull_snp(loci_file, bam_file, bai_file, muts$CHR, muts$POSITION, muts$REF_BASE, muts$MUT_BASE, snps$Pos, snps$Ref, snps$Var, snps$AF, snps$AFphased)
+#'     
+#'     # Categorise where the mutation is with respect to the CN event
+#'     ACGT = 10:13
+#'     names(ACGT) <- c("A", "C", "G", "T")
+#'     linked.muts$Parental <- rep(NA, dim(linked.muts)[1])
+#'     if (nrow(linked.muts) > 0) {
+#'       for (i in 1:nrow(linked.muts)) {
+#'         
+#'         # Fetch allele frequency
+#'         af = linked.muts$AF[i]
+#'         # Get number of reads covering the ref mutation allele
+#'         ref_count = hap.info[hap.info$pos==linked.muts$Pos2[i],]$ref_count
+#'         # Get number of reads covering the alt mutation allele
+#'         alt_count = hap.info[hap.info$pos==linked.muts$Pos2[i],]$mut_count
+#'         # Number of reads covering SNP allele A, that also cover mutation alt
+#'         linked_to_A = linked.muts[i,ACGT[linked.muts$Ref2[i]]]
+#'         # Number of reads covering SNP allele B, that also cover mutation alt
+#'         linked_to_B = linked.muts[i,ACGT[linked.muts$Var2[i]]]
+#'         
+#'         if (af < 0.5 & alt_count==1 & linked_to_A > 0 & linked_to_B == 0) {
+#'           linked.muts$Parental[i] = "MUT_ON_DELETED"
+#'         } else if (af < 0.5 & alt_count==1 & linked_to_A == 0 & linked_to_B > 0) {
+#'           linked.muts$Parental[i] = "MUT_ON_RETAINED"
+#'         } else if (af > 0.5 & alt_count==1 & linked_to_A > 0 & linked_to_B == 0) {
+#'           linked.muts$Parental[i] = "MUT_ON_RETAINED"
+#'         } else if (af > 0.5 & alt_count==1 & linked_to_A == 0 & linked_to_B > 0) {
+#'           linked.muts$Parental[i] = "MUT_ON_DELETED"
+#'         } else if (af > 0.5 & ref_count==1 & linked_to_A > 0 & linked_to_B == 0) {
+#'           linked.muts$Parental[i] = "MUT_ON_DELETED"
+#'         } else if (af > 0.5 & ref_count==1 & linked_to_A == 0 & linked_to_B > 0) {
+#'           linked.muts$Parental[i] = "MUT_ON_RETAINED"
+#'         } else if (af < 0.5 & ref_count==1 & linked_to_A > 0 & linked_to_B == 0) {
+#'           linked.muts$Parental[i] = "MUT_ON_RETAINED"
+#'         } else if (af < 0.5 & ref_count==1 & linked_to_A == 0 & linked_to_B > 0) {
+#'           linked.muts$Parental[i] = "MUT_ON_DELETED"
+#'         }
+#'       }
+#'     }
+#'   }
+#'   
+#'   write.table(linked.muts,outfile, sep="\t", quote=F, row.names=F)
+#' }
 
 ############################################
 # Copy number convert scripts
@@ -517,18 +945,6 @@ addYchromToBattenberg = function(subclone.data) {
 #' Main function that creates the DP input file. A higher level function should be called by users
 #' @noRd
 GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, is.male = F, out.dir = NULL, SNP.phase.file = NULL, mut.phase.file = NULL, adjust_male_y_chrom=F){
-
-  write_output = function(info, outputfile) {
-	  # convert GenomicRanges object to df
-	  df = data.frame(chr=as.data.frame(seqnames(info)),
-			  start=start(info)-1,
-			  end=end(info))
-          df = cbind(df, as.data.frame(elementMetadata(info)))
-          colnames(df)[1] = "chr"
-          df = df[with(df, order(chr)),]
-          print(head(df))
-          write.table(df, outputfile, sep="\t", row.names=F, quote=F)
-  }
   
   subclone.data = read.table(subclone.file,sep="\t",header=T,stringsAsFactors=F)
   # Add in the Y chrom if donor is male and Battenberg hasn't supplied it (BB returns X/Y ad multiple copies of X for men)
@@ -565,22 +981,14 @@ GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, 
   if(is.male & "chr" %in% names(info)){
     normal.CN = rep(2,nrow(info))
     normal.CN[info$chr=="X"| info$chr=="Y"] = 1
-    info$mutation.copy.number = dpclust3p:::mutationBurdenToMutationCopyNumber(info$mut.count/ (info$mut.count + info$WT.count) , info$subclonal.CN, cellularity, normal.CN)
+    info$mutation.copy.number = mutationBurdenToMutationCopyNumber(info$mut.count/ (info$mut.count + info$WT.count) , info$subclonal.CN, cellularity, normal.CN)
   }else{
-    info$mutation.copy.number = dpclust3p:::mutationBurdenToMutationCopyNumber(info$mut.count/ (info$mut.count + info$WT.count) , info$subclonal.CN, cellularity)
+    info$mutation.copy.number = mutationBurdenToMutationCopyNumber(info$mut.count/ (info$mut.count + info$WT.count) , info$subclonal.CN, cellularity)
   }
   
   # convert MCN to subclonal fraction - tricky for amplified mutations
   info$subclonal.fraction = info$mutation.copy.number
-  expected.burden.for.MCN = dpclust3p:::mutationCopyNumberToMutationBurden(rep(1,length(info)),info$subclonal.CN,cellularity)
-  info$no.chrs.bearing.mut = NA
-
-  # Check if any SNVs have a copy number state, if there are none we can stop here
-  if (all(is.na(info$nMaj1))) {
-	  write_output(info, outputfile)
-	  return()
-  }
-
+  expected.burden.for.MCN = mutationCopyNumberToMutationBurden(rep(1,length(info)),info$subclonal.CN,cellularity)
   non.zero.indices = which(info$mut.count>0 & !is.na(expected.burden.for.MCN))
   #test for mutations in more than 1 copy
   p.vals = sapply(1:length(non.zero.indices),function(v,e,i){
@@ -688,7 +1096,15 @@ GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, 
     info$no.chrs.bearing.mut[possible.zero.muts[del.indices]] = 0
   }
   
-  write_output(info, outputfile)
+  # convert GenomicRanges object to df
+  df = data.frame(chr=as.data.frame(seqnames(info)),
+                  start=start(info)-1,
+                  end=end(info))
+  df = cbind(df, as.data.frame(elementMetadata(info)))
+  colnames(df)[1] = "chr"
+  df = df[with(df, order(chr)),]
+  print(head(df))
+  write.table(df, outputfile, sep="\t", row.names=F, quote=F)
 }
 
 #' Convenience function to load the cellularity from a rho_and_psi file
