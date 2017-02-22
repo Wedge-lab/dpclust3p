@@ -1,6 +1,6 @@
-############################################
-# Allele counting functions
-############################################
+################################################
+# Allele counting functions - SNV, indel and SV
+################################################
 #' Run alleleCount
 #' 
 #' Count the alleles for specified locations in the loci file. Expects alleleCount binary in $PATH
@@ -357,7 +357,7 @@ getAlleleCounts.ICGC_consensus_snv = function(v) {
   return(output)
 }
 
-#' Dump allele counts in ICGC consensus SNV format
+#' Dump allele counts in ICGC consensus indel format
 #' 
 #' This function fetches allele counts from the info field in the VCF file.
 #' 
