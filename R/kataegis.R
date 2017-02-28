@@ -1,11 +1,11 @@
 #' Identify Kataegis events in SNV mutation data
-#' 
+#'
 #' @param samplename Samplename used when writing output files
 #' @param dpInfile A DP input file
 #' @param outdir Directory where output will be written
 #' @param gamma_param Gamma parameter to be used for segmentation
 #' @param kmin Kmin parameter to be used for segmentation
-#' @param kataegis.threshold Intermutation distance, if NA will be set to: (a) 900000 > SNVs: 100, 
+#' @param kataegis.threshold Intermutation distance, if NA will be set to: (a) 900000 > SNVs: 100,
 #' (b) 500000 > SNVs: 250, (c) 100000 > SNVs, (d) otherwise 1000 (Default NA)
 #' @param minMuts Minimum number of mutations within kataegis.threshold to call Kataegis
 #' @param logScale Transform intermutation distance to logscale
@@ -32,7 +32,7 @@ identifyKataegis<-function(samplename, dpInfile, outdir=".", gamma_param=25, kmi
       kataegis.threshold = 1000
     }
   }
-    
+
   print(samplename)
   segmentedIntermutationDistances = array(NA,c(0,3))
   kat.regions.all = array(NA,c(0,5))
@@ -57,7 +57,7 @@ identifyKataegis<-function(samplename, dpInfile, outdir=".", gamma_param=25, kmi
         makeKataegisPlot(outdir, samplename, chr, interDist, segInterDist, gamma_param, kmin)
       }
       segmentedIntermutationDistances = rbind(segmentedIntermutationDistances,cbind(chr,positions,segInterDist))
-      
+
       #use positions, rather than midpoints, to define extent of kataegis
       positions = saved.positions
       if(logScale){
@@ -66,66 +66,37 @@ identifyKataegis<-function(samplename, dpInfile, outdir=".", gamma_param=25, kmi
         katLoci = segInterDist<=kataegis.threshold
       }
       if(sum(katLoci)>0){
-        start.regions = which(katLoci[-1] & !(katLoci[-(length(katLoci))]))+1
-        end.regions = which(!(katLoci[-1]) & katLoci[-(length(katLoci))])+1
-        if(length(end.regions)+length(start.regions)>0){						
-          if(length(end.regions)==1 & length(start.regions)==0){
+        start.regions = which(c(katLoci, F) & !c(F, katLoci))
+        end.regions = which(!c(katLoci, F) & c(F, katLoci)) - 1
+        if(length(start.regions)>0){
+          for(r in 1:length(start.regions)){
             kat.regions.all = rbind(kat.regions.all,
-                                    c(chr,positions[1],positions[end.regions[1]],positions[end.regions[1]]-positions[1],end.regions[1]))
-            end.regions = end.regions[-1]
-          }else if(length(start.regions)==1 & length(end.regions)==0){
-            kat.regions.all = rbind(kat.regions.all,
-                                    c(chr,positions[start.regions[1]],positions[length(positions)],positions[length(positions)]-positions[start.regions[1]],length(positions)-start.regions[1]+1))
-            start.regions = start.regions[-1]
-          }else if(end.regions[1]<start.regions[1]){
-            kat.regions.all = rbind(kat.regions.all,
-                                    c(chr,positions[1],positions[end.regions[1]],positions[end.regions[1]]-positions[1],end.regions[1]))
-            if(length(start.regions)==1){
-              kat.regions.all = rbind(kat.regions.all,
-                                      c(chr,positions[start.regions[1]],positions[length(positions)],positions[length(positions)]-positions[start.regions[1]],length(positions)-start.regions[1]+1))
-              start.regions = start.regions[-1]								
-            }
-            end.regions = end.regions[-1]
-            #}else if(start.regions[length(start.regions)]>end.regions[length(end.regions)]){
-            #condition changed - kataegis regions may overlap both the start and the end of a chromosome
+              c(chr,positions[start.regions[r]],positions[end.regions[r]],positions[end.regions[r]]-positions[start.regions[r]],end.regions[r]-start.regions[r]+1))
           }
-          if(length(start.regions)>0 & length(end.regions)>0){
-            if(start.regions[length(start.regions)]>end.regions[length(end.regions)]){
-              kat.regions.all = rbind(kat.regions.all,
-                                      c(chr,positions[start.regions[length(start.regions)]],positions[length(positions)],positions[length(positions)]-positions[start.regions[length(start.regions)]],length(positions)-start.regions[length(start.regions)]+1))
-              start.regions = start.regions[-(length(start.regions))]
-            }
-          }
-          if(length(start.regions)>0){
-            for(r in 1:length(start.regions)){
-              kat.regions.all = rbind(kat.regions.all,
-                                      c(chr,positions[start.regions[r]],positions[end.regions[r]],positions[end.regions[r]]-positions[start.regions[r]],end.regions[r]-start.regions[r]+1))
-            }
-          }							
         }
       }
     }
   }
-  
+
   if(logScale){
     outfile_suffix = "_logScale.txt"
   }else{
     outfile_suffix = ".txt"
   }
-  
+
   colnames(kat.regions.all) = c("chr", "start", "end", "size", "no_of_variants")
-  kat.regions.all = kat.regions.all[as.numeric(kat.regions.all[,5])>=minMuts,]				
+  kat.regions.all = kat.regions.all[as.numeric(kat.regions.all[,5])>=minMuts,]
   # single row causes problems
   if(length(kat.regions.all)==5){
     temp = array(kat.regions.all,c(1,5))
     colnames(temp) = names(kat.regions.all)
     kat.regions.all = temp
   }
-  write.table(kat.regions.all,paste(outdir,"/",samplename,"_kataegis_regions_fromSegmentation_gamma",gamma_param,"_threshold",kataegis.threshold,"_kmin",kmin,"_minMuts",minMuts,outfile_suffix,sep=""),sep="\t",quote=F,row.names=F,col.names=T)	
-  
+  write.table(kat.regions.all,paste(outdir,"/",samplename,"_kataegis_regions_fromSegmentation_gamma",gamma_param,"_threshold",kataegis.threshold,"_kmin",kmin,"_minMuts",minMuts,outfile_suffix,sep=""),sep="\t",quote=F,row.names=F,col.names=T)
+
   colnames(segmentedIntermutationDistances)=c("chr","pos","intermutation.distances")
   write.table(segmentedIntermutationDistances,paste(outdir,"/",samplename,"_kataegis_segmentedIntermutationDistances_gamma",gamma_param,"_threshold",kataegis.threshold,"_kmin",kmin,"_minMuts",minMuts,outfile_suffix,sep=""),sep="\t",quote=F,row.names=F)
-  
+
   kat.muts = chrpos[0,]
   if(nrow(kat.regions.all)>0){
     for(k in 1:nrow(kat.regions.all)){
@@ -137,7 +108,7 @@ identifyKataegis<-function(samplename, dpInfile, outdir=".", gamma_param=25, kmi
   if(nrow(kat.muts)!=sum(as.numeric(kat.regions.all[,5]))){
     stop("number of kataegis variants is inconsistent")
   }
-  
+
   #' Remove the Kataegis SNVs from the DP input file
   if (removeFromDPin) {
     # Filter the DP input file
@@ -154,15 +125,15 @@ identifyKataegis<-function(samplename, dpInfile, outdir=".", gamma_param=25, kmi
 makeKataegisPlot = function(outdir, samplename, chr, interDist, segInterDist, gamma_param, kmin) {
   if(logScale){
     png(filename = paste(outdir,"/",samplename,"_chr",chr,"_kataegis_segmentedIntermutationDistance_logScale_gamma",gamma_param,"_kmin",kmin,".png",sep=""), width = 2000, height = 1000, res = 200)
-    par(mar = c(5,5,5,0.5), cex = 0.6, cex.main=3, cex.axis = 2, cex.lab = 2)		
-    plot(c(min(positions)/1000000,max(positions)/1000000),c(0,ceiling(max(interDist))),pch=".",type = "n", 
+    par(mar = c(5,5,5,0.5), cex = 0.6, cex.main=3, cex.axis = 2, cex.lab = 2)
+    plot(c(min(positions)/1000000,max(positions)/1000000),c(0,ceiling(max(interDist))),pch=".",type = "n",
          main = paste("Chromosome ", chr, sep=""), xlab = "Position (Mb)", ylab = "log(intermutation distance) (segmented)")
     points(positions/1000000,interDist,pch=20,col="red",cex=0.5)
     points(positions/1000000,segInterDist,pch=20,cex=2,col="green")
   }else{
     png(filename = paste(outdir,"/",samplename,"_chr",chr,"_kataegis_segmentedIntermutationDistance_gamma",gamma_param,"_kmin",kmin,".png",sep=""), width = 2000, height = 1000, res = 200)
-    par(mar = c(5,5,5,0.5), cex = 0.6, cex.main=3, cex.axis = 2, cex.lab = 2)		
-    plot(c(min(positions)/1000000,max(positions)/1000000),c(0,ceiling(log(max(interDist)))),pch=".",type = "n", 
+    par(mar = c(5,5,5,0.5), cex = 0.6, cex.main=3, cex.axis = 2, cex.lab = 2)
+    plot(c(min(positions)/1000000,max(positions)/1000000),c(0,ceiling(log(max(interDist)))),pch=".",type = "n",
          main = paste("Chromosome ", chr, sep=""), xlab = "Position (Mb)", ylab = "log(intermutation distance) (segmented)")
     points(positions/1000000,log(interDist),pch=20,col="red",cex=0.5)
     points(positions/1000000,log(segInterDist),pch=20,cex=2,col="green")
