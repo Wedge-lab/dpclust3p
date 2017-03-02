@@ -67,7 +67,7 @@ identifyKataegis<-function(samplename, dpInfile, outdir=".", gamma_param=25, kmi
       }
       if(sum(katLoci)>0){
         start.regions = which(c(katLoci, F) & !c(F, katLoci))
-        end.regions = which(!c(katLoci, F) & c(F, katLoci)) - 1
+        end.regions = which(!c(katLoci, F) & c(F, katLoci))
         if(length(start.regions)>0){
           for(r in 1:length(start.regions)){
             kat.regions.all = rbind(kat.regions.all,
