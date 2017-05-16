@@ -1,7 +1,7 @@
 ##############################################
 # Copy number preparations
 ##############################################
-#' This function takes a Battenberg subclones.txt file, pulls out the A copy number profile,
+#' This function takes a Battenberg styled data.frame, pulls out the A copy number profile,
 #' then it calculates the total CN and a weighted ploidy before it subsets the input data
 #' by columns: "chr", "startpos", "endpos", "nMaj1_A", "nMin1_A", "frac1_A", 
 #' "nMaj2_A", "nMin2_A", "frac2_A", "SDfrac_A". 
@@ -21,13 +21,14 @@
 #' The copy number segments, classification, weighted ploidy and samplename are saved
 #' to the specified output file
 #' 
-#' @param samplename, A String containing the samplename
-#' @param bb_subclones_file, A String containing the full path to a Battenberg subclones.txt file
-#' @param gender, Specify either the string male or female
-#' @param outfile, A String with the full path to where the output should be written
+#' @param samplename A String containing the samplename
+#' @param cndata A data.frame in Battenberg subclones format
+#' @param gender Specify either the string male or female
+#' @param outfile A String with the full path to where the output should be written
+#' @param ploidy An optional parameter that is used to call gains/losses against. If higher than the ploidy a segment is considered a gain, lower a loss. When left as NA the sample ploidy is used (Default NA).
 #' @author tjm
 #' @export
-collate_bb_subclones = function(samplename, bb_subclones_file, gender, outfile) {
+collate_bb_subclones = function(samplename, cndata, gender, outfile, ploidy=NA) {
   
   if(gender == 'male' | gender == 'Male') {
     is_male = T
@@ -38,7 +39,7 @@ collate_bb_subclones = function(samplename, bb_subclones_file, gender, outfile) 
   }
   
   allsegs = NULL
-  cndata = read.table(bb_subclones_file, header=T, stringsAsFactors=F)
+  # cndata = read.table(bb_subclones_file, header=T, stringsAsFactors=F)
   cndata = cbind(samplename, cndata)
   # Remove the X chromosome when sample is male as Battenberg cannot infer copy number there
   if (is_male) {
@@ -63,7 +64,9 @@ collate_bb_subclones = function(samplename, bb_subclones_file, gender, outfile) 
     cndataweighted = totalcn * (cndata$endpos - cndata$startpos) / (sum(as.numeric(cndata$endpos-cndata$startpos)))
   }
   # Ploidy weighted by segment size
-  ploidy = round(sum(cndataweighted)/2)*2
+  if (is.na(ploidy)) {
+    ploidy = round(sum(cndataweighted)/2)*2
+  }
   
   # If there is no column with a tumour name, add it in temporarily
   if (! "Tumour_Name" %in% colnames(cndata)) {
@@ -75,7 +78,14 @@ collate_bb_subclones = function(samplename, bb_subclones_file, gender, outfile) 
                                   "frac1_A", "nMaj2_A", "nMin2_A", 
                                   "frac2_A", "SDfrac_A")], tumour_ploidy=ploidy)
   
+  ######################################################
   # Now classify all segments into a category
+  ######################################################
+  
+  # Columns to be selected
+  select_state_1 = c(1:7,11:12)
+  select_state_2 = c(1:4,8:12)
+  
   tot = dim(allsegs)[1]
   # if you have clonal LOH, subclonal LOH is not counted!!!  Losses not counted
   allsegsa <- NULL
@@ -84,33 +94,29 @@ collate_bb_subclones = function(samplename, bb_subclones_file, gender, outfile) 
     # Clonal copy number
     if (is.na(allsegs$nMaj2_A[i])) {
       if (allsegs$nMin1_A[i] == 0 & allsegs$nMaj1_A[i] == 0) {
-        allsegsa <- rbind(allsegsa, allsegs[i,c(1:7,11:12)])
+        allsegsa <- rbind(allsegsa, allsegs[i,select_state_1])
         CNA <- c(CNA, "cHD")
       }
       if (xor(allsegs$nMin1_A[i] == 0, allsegs$nMaj1_A[i] == 0)) {
-        allsegsa <- rbind(allsegsa, allsegs[i,c(1:7,11:12)])
+        allsegsa <- rbind(allsegsa, allsegs[i,select_state_1])
         CNA <- c(CNA, "cLOH")
       }
-      if ((allsegs$nMaj1_A[i] > allsegs$tumour_ploidy[i]/2) |
-            (allsegs$nMin1_A[i] > allsegs$tumour_ploidy[i]/2)) {
-        if ((allsegs$nMaj1_A[i] > allsegs$tumour_ploidy[i]*2) |
-              (allsegs$nMin1_A[i] > allsegs$tumour_ploidy[i]*2)) {
-          allsegsa <- rbind(allsegsa, allsegs[i,c(1:7,11:12)])
+      if ((allsegs$nMaj1_A[i] > ploidy/2) | (allsegs$nMin1_A[i] > ploidy/2)) {
+        if ((allsegs$nMaj1_A[i] > ploidy*2) | (allsegs$nMin1_A[i] > ploidy*2)) {
+          allsegsa <- rbind(allsegsa, allsegs[i,select_state_1])
           CNA <- c(CNA, "cAmp")
         }
         else {
-          allsegsa <- rbind(allsegsa, allsegs[i,c(1:7,11:12)])
+          allsegsa <- rbind(allsegsa, allsegs[i,select_state_1])
           CNA <- c(CNA, "cGain")
         }
       }
-      if ((allsegs$nMaj1_A[i] == allsegs$tumour_ploidy[i]/2) &
-            (allsegs$nMin1_A[i] == allsegs$tumour_ploidy[i]/2)) {
-        allsegsa <- rbind(allsegsa, allsegs[i,c(1:7,11:12)])
+      if ((allsegs$nMaj1_A[i] == ploidy/2) & (allsegs$nMin1_A[i] == ploidy/2)) {
+        allsegsa <- rbind(allsegsa, allsegs[i,select_state_1])
         CNA <- c(CNA, "NoCNV")
       }
-      if ((allsegs$nMaj1_A[i] < allsegs$tumour_ploidy[i]/2) |
-            (allsegs$nMin1_A[i] < allsegs$tumour_ploidy[i]/2)) {
-        allsegsa <- rbind(allsegsa, allsegs[i,c(1:7,11:12)])
+      if ((allsegs$nMaj1_A[i] < ploidy/2) | (allsegs$nMin1_A[i] < ploidy/2)) {
+        allsegsa <- rbind(allsegsa, allsegs[i,select_state_1])
         CNA <- c(CNA, "cLoss")
       }
     }
@@ -119,63 +125,57 @@ collate_bb_subclones = function(samplename, bb_subclones_file, gender, outfile) 
     if (!is.na(allsegs$nMaj2_A[i])) {
       if (allsegs$nMin1_A[i] == 0 & allsegs$nMaj1_A[i] == 0) {
         CNA <- c(CNA, "sHD")
-        allsegsa <- rbind(allsegsa, allsegs[i,c(1:7,11:12)])
+        allsegsa <- rbind(allsegsa, allsegs[i,select_state_1])
       }
       if ((allsegs$nMin1_A[i] == 0 | allsegs$nMaj1_A[i] == 0) &
             xor(allsegs$nMin2_A[i] == 0, allsegs$nMaj2_A[i] == 0)) {
         CNA <- c(CNA, "cLOH")
-        tmp <- allsegs[i,c(1:4,8:12)]
-        names(tmp) <- names(allsegs[i,c(1:7,11:12)])
-        allsegsa <- rbind(allsegsa, tmp[,names(allsegs[i,c(1:7,11:12)])])
+        tmp <- allsegs[i,select_state_2]
+        names(tmp) <- names(allsegs[i,select_state_1])
+        allsegsa <- rbind(allsegsa, tmp[,names(allsegs[i,select_state_1])])
       }
       else if (xor(allsegs$nMin1_A[i] == 0, allsegs$nMaj1_A[i] == 0)) {
         CNA <- c(CNA, "sLOH")
-        allsegsa <- rbind(allsegsa, allsegs[i,c(1:7,11:12)])
+        allsegsa <- rbind(allsegsa, allsegs[i,select_state_1])
       }
-      if ((allsegs$nMaj1_A[i] > allsegs$tumour_ploidy[i]/2 |
-             allsegs$nMin1_A[i] > allsegs$tumour_ploidy[i]/2) &
-            (allsegs$nMaj2_A[i] > allsegs$tumour_ploidy[i]/2 |
-               allsegs$nMin2_A[i] > allsegs$tumour_ploidy[i]/2)) {
-        if ((allsegs$nMaj1_A[i] > allsegs$tumour_ploidy[i]*2 |
-               allsegs$nMin1_A[i] > allsegs$tumour_ploidy[i]*2) &
-              (allsegs$nMaj2_A[i] > allsegs$tumour_ploidy[i]*2 |
-                 allsegs$nMin2_A[i] > allsegs$tumour_ploidy[i]*2)) {
+      if ((allsegs$nMaj1_A[i] > ploidy/2 | allsegs$nMin1_A[i] > ploidy/2) &
+            (allsegs$nMaj2_A[i] > ploidy/2 | allsegs$nMin2_A[i] > ploidy/2)) {
+        if ((allsegs$nMaj1_A[i] > ploidy*2 | allsegs$nMin1_A[i] > ploidy*2) &
+              (allsegs$nMaj2_A[i] > ploidy*2 | allsegs$nMin2_A[i] > ploidy*2)) {
           CNA <- c(CNA, "cAmp")
-          allsegsa <- rbind(allsegsa, allsegs[i,c(1:7,11:12)])
+          allsegsa <- rbind(allsegsa, allsegs[i,select_state_1])
         }
         else {
           CNA <- c(CNA, "cGain")
-          allsegsa <- rbind(allsegsa, allsegs[i,c(1:7,11:12)])
+          allsegsa <- rbind(allsegsa, allsegs[i,select_state_1])
         }
       }
-      if ((allsegs$nMin2_A[i] > allsegs$tumour_ploidy[i]/2 & allsegs$nMin1_A[i] != allsegs$nMin2_A[i])|
-            (allsegs$nMaj2_A[i] > allsegs$tumour_ploidy[i]/2 & allsegs$nMaj1_A[i] != allsegs$nMaj2_A[i])) {
-        if ((allsegs$nMin2_A[i] > allsegs$tumour_ploidy[i]*2 & allsegs$nMin1_A[i] != allsegs$nMin2_A[i]) |
-              (allsegs$nMaj2_A[i] > allsegs$tumour_ploidy[i]*2 & allsegs$nMaj1_A[i] != allsegs$nMaj2_A[i])) {
+      if ((allsegs$nMin2_A[i] > ploidy/2 & allsegs$nMin1_A[i] != allsegs$nMin2_A[i])|
+            (allsegs$nMaj2_A[i] > ploidy/2 & allsegs$nMaj1_A[i] != allsegs$nMaj2_A[i])) {
+        if ((allsegs$nMin2_A[i] > ploidy*2 & allsegs$nMin1_A[i] != allsegs$nMin2_A[i]) |
+              (allsegs$nMaj2_A[i] > ploidy*2 & allsegs$nMaj1_A[i] != allsegs$nMaj2_A[i])) {
           CNA <- c(CNA, "sAmp")
-          tmp <- allsegs[i,c(1:4,8:12)]
-          names(tmp) <- names(allsegs[i,c(1:7,11:12)])
-          allsegsa <- rbind(allsegsa, tmp[,names(allsegs[i,c(1:7,11:12)])])
+          tmp <- allsegs[i,select_state_2]
+          names(tmp) <- names(allsegs[i,select_state_1])
+          allsegsa <- rbind(allsegsa, tmp[,names(allsegs[i,select_state_1])])
         }
         else {
           CNA <- c(CNA, "sGain")
-          tmp <- allsegs[i,c(1:4,8:12)]
-          names(tmp) <- names(allsegs[i,c(1:7,11:12)])
-          allsegsa <- rbind(allsegsa, tmp[,names(allsegs[i,c(1:7,11:12)])])
+          tmp <- allsegs[i,select_state_2]
+          names(tmp) <- names(allsegs[i,select_state_1])
+          allsegsa <- rbind(allsegsa, tmp[,names(allsegs[i,select_state_1])])
         }
       }
-      if ((allsegs$nMaj1_A[i] < allsegs$tumour_ploidy[i]/2 |
-             allsegs$nMin1_A[i] < allsegs$tumour_ploidy[i]/2) &
-            (allsegs$nMaj2_A[i] < allsegs$tumour_ploidy[i]/2 |
-               allsegs$nMin2_A[i] < allsegs$tumour_ploidy[i]/2)) {
+      if ((allsegs$nMaj1_A[i] < ploidy/2 | allsegs$nMin1_A[i] < ploidy/2) &
+            (allsegs$nMaj2_A[i] < ploidy/2 | allsegs$nMin2_A[i] < ploidy/2)) {
         CNA <- c(CNA, "cLoss")
-        tmp <- allsegs[i,c(1:4,8:12)]
-        names(tmp) <- names(allsegs[i,c(1:7,11:12)])
-        allsegsa <- rbind(allsegsa, tmp[,names(allsegs[i,c(1:7,11:12)])])
+        tmp <- allsegs[i,select_state_2]
+        names(tmp) <- names(allsegs[i,select_state_1])
+        allsegsa <- rbind(allsegsa, tmp[,names(allsegs[i,select_state_1])])
       }
-      if (((allsegs$nMaj1_A[i] < allsegs$tumour_ploidy[i]/2 & allsegs$nMaj1_A[i] != allsegs$nMaj2_A[i]) |
-             (allsegs$nMin1_A[i] < allsegs$tumour_ploidy[i]/2 & allsegs$nMin1_A[i] != allsegs$nMin2_A[i]))) {
-        allsegsa <- rbind(allsegsa, allsegs[i,c(1:7,11:12)])
+      if (((allsegs$nMaj1_A[i] < ploidy/2 & allsegs$nMaj1_A[i] != allsegs$nMaj2_A[i]) |
+             (allsegs$nMin1_A[i] < ploidy/2 & allsegs$nMin1_A[i] != allsegs$nMin2_A[i]))) {
+        allsegsa <- rbind(allsegsa, allsegs[i,select_state_1])
         CNA <- c(CNA, "sLoss")      
       }
     }
