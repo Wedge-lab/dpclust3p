@@ -21,6 +21,25 @@ alleleCount = function(locifile, bam, outfile, min_baq=20, min_maq=35) {
   system(cmd, wait=T)
 }
 
+#' Obtain alt allele for all variants as a vector
+#' 
+#' Dumps the alt allele in a vector. It takes only the first element if multiple alt alleles are listed
+#' @param vcf A VCF object
+#' @return A vector with the alt allele
+#' @author sd11
+#' @export
+getAltAllele = function(vcf) {
+  clist = CharacterList(VariantAnnotation::alt(vcf))
+  mult = elementLengths(clist) > 1L
+  
+  if (any(mult)) {
+    warning(paste("Took first alt allele only for these variants: ", paste(seqnames(vcf), start(vcf))))
+  }
+  
+  clist[mult] = lapply(clist[mult], paste0, collapse=",")
+  return(unlist(clist))
+}
+
 #' Dump allele counts from vcf - Sanger ICGC pancancer pipeline
 #'
 #' Dump allele counts stored in the sample columns of the VCF file. Output will go into a file
@@ -272,7 +291,8 @@ getAlleleCounts.DKFZ = function(v, sample_col) {
   counts.ref = counts[,1] + counts[,2] # ref forward/reverse
   counts.alt = counts[,3] + counts[,4] # alt forward/reverse
   allele.ref = as.character(VariantAnnotation::ref(v))
-  allele.alt = unlist(lapply(VariantAnnotation::alt(v), function(x) { as.character(x[[1]]) }))
+  # allele.alt = unlist(lapply(VariantAnnotation::alt(v), function(x) { as.character(x[[1]]) }))
+  allele.alt = getAltAllele(v)
   
   output = construct_allelecounter_table(count.ref, count.alt, allele.ref, allele.alt)
   return(output)
@@ -332,7 +352,8 @@ getAlleleCounts.Broad = function(v, sample_col) {
   count.ref = as.numeric(unlist(VariantAnnotation::geno(v)$ref_count))
   count.alt = as.numeric(unlist(VariantAnnotation::geno(v)$alt_count))
   allele.ref = as.character(VariantAnnotation::ref(v))
-  allele.alt = unlist(lapply(VariantAnnotation::alt(v), function(x) { as.character(x[[1]]) }))
+  # allele.alt = unlist(lapply(VariantAnnotation::alt(v), function(x) { as.character(x[[1]]) }))
+  allele.alt = getAltAllele(v)
   
   output = construct_allelecounter_table(count.ref, count.alt, allele.ref, allele.alt)
   return(output)
@@ -351,7 +372,8 @@ getAlleleCounts.ICGC_consensus_snv = function(v) {
   count.alt = info(v)$t_alt_count
   count.ref = info(v)$t_ref_count
   allele.ref = as.character(VariantAnnotation::ref(v))
-  allele.alt = unlist(lapply(VariantAnnotation::alt(v), function(x) { as.character(x[[1]]) }))
+  # allele.alt = unlist(lapply(VariantAnnotation::alt(v), function(x) { as.character(x[[1]]) }))
+  allele.alt = getAltAllele(v)
   
   output = construct_allelecounter_table(count.ref, count.alt, allele.ref, allele.alt)
   return(output)
@@ -391,7 +413,8 @@ getAlleleCounts.mutect = function(v, sample_col) {
   count.ref = counts[,1]
   count.alt = counts[,2]
   allele.ref = as.character(VariantAnnotation::ref(v))
-  allele.alt = unlist(lapply(VariantAnnotation::alt(v), function(x) { as.character(x[[1]]) }))
+  # allele.alt = unlist(lapply(VariantAnnotation::alt(v), function(x) { as.character(x[[1]]) }))
+  allele.alt = getAltAllele(v)
   output = construct_allelecounter_table(count.ref, count.alt, allele.ref, allele.alt)
   return(output)
 }
