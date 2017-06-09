@@ -565,9 +565,9 @@ GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, 
   if(is.male & "chr" %in% names(info)){
     normal.CN = rep(2,nrow(info))
     normal.CN[info$chr=="X"| info$chr=="Y"] = 1
-    info$mutation.copy.number = dpclust3p:::mutationBurdenToMutationCopyNumber(info$mut.count/ (info$mut.count + info$WT.count) , info$subclonal.CN, cellularity, normal.CN)
+    info$mutation.copy.number = mutationBurdenToMutationCopyNumber(info$mut.count/ (info$mut.count + info$WT.count) , info$subclonal.CN, cellularity, normal.CN)
   }else{
-    info$mutation.copy.number = dpclust3p:::mutationBurdenToMutationCopyNumber(info$mut.count/ (info$mut.count + info$WT.count) , info$subclonal.CN, cellularity)
+    info$mutation.copy.number = mutationBurdenToMutationCopyNumber(info$mut.count/ (info$mut.count + info$WT.count) , info$subclonal.CN, cellularity)
   }
   
   # convert MCN to subclonal fraction - tricky for amplified mutations
