@@ -26,9 +26,10 @@
 #' @param gender Specify either the string male or female
 #' @param outfile A String with the full path to where the output should be written
 #' @param ploidy An optional parameter that is used to call gains/losses against. If higher than the ploidy a segment is considered a gain, lower a loss. When left as NA the sample ploidy is used (Default NA).
+#' @param exclude_sex_chroms Optional parameter whether to exclude sex chromosomes (Default FALSE)
 #' @author tjm
 #' @export
-collate_bb_subclones = function(samplename, cndata, gender, outfile, ploidy=NA) {
+collate_bb_subclones = function(samplename, cndata, gender, outfile, ploidy=NA, exclude_sex_chroms=F) {
   
   if(gender == 'male' | gender == 'Male') {
     is_male = T
@@ -39,14 +40,13 @@ collate_bb_subclones = function(samplename, cndata, gender, outfile, ploidy=NA) 
   }
   
   allsegs = NULL
-  # cndata = read.table(bb_subclones_file, header=T, stringsAsFactors=F)
   cndata = cbind(samplename, cndata)
-  # Remove the X chromosome when sample is male as Battenberg cannot infer copy number there
-  if (is_male) {
-    cndata = cndata[!cndata$chr=="X",]
+  # Remove the sex chromosomes if required
+  if (exclude_sex_chroms) {
+    cndata = cndata[!(cndata$chr=="X" | cndata$chr=="Y"),]
   }
   
-  # Remove all segments witout a call
+  # Remove all segments without a call
   if (any(is.na(cndata$nMin1_A) | is.na(cndata$nMaj1_A))) {
     cndata = cndata[!(is.na(cndata$nMin1_A) | is.na(cndata$nMaj1_A)),]
   }
@@ -63,7 +63,8 @@ collate_bb_subclones = function(samplename, cndata, gender, outfile, ploidy=NA) 
     }
     cndataweighted = totalcn * (cndata$endpos - cndata$startpos) / (sum(as.numeric(cndata$endpos-cndata$startpos)))
   }
-  # Ploidy weighted by segment size
+  
+  # Ploidy weighted by segment size - if not provided as input
   if (is.na(ploidy)) {
     ploidy = round(sum(cndataweighted)/2)*2
   }
@@ -91,18 +92,95 @@ collate_bb_subclones = function(samplename, cndata, gender, outfile, ploidy=NA) 
   allsegsa <- NULL
   CNA <- NULL
   for (i in 1:dim(allsegs)[1]) {
+    
+    is_hd = allsegs$nMin1_A[i] == 0 & allsegs$nMaj1_A[i] == 0
+    is_loh_1 = xor(allsegs$nMin1_A[i] == 0, allsegs$nMaj1_A[i] == 0)
+    if (!is.na(allsegs$nMaj2_A[i])) {
+      is_loh_2 = xor(allsegs$nMin2_A[i] == 0, allsegs$nMaj2_A[i] == 0)
+    }
+    
+
+    ######################################################
+    # Determine the logic category parameters
+    ######################################################
+    
+    # X/Y are a special case in males
+    is_sex_chrom = (allsegs$chr[i]=="X" | allsegs$chr[i]=="Y")
+    if (is_male & is_sex_chrom) {
+      sex_chromosome_maj_exp = ploidy/2
+      sex_chromosome_maj_amp = ploidy*2
+      
+      # check that min==0, if not, then switch
+      if (allsegs$nMaj1_A[i]==0 & allsegs$nMin1_A[i] > 0) {
+        allsegs$nMaj1_A[i] = allsegs$nMin1_A[i]
+        allsegs$nMin1_A[i] = 0
+        
+        if (!is.na(allsegs$nMaj2_A[i])) {
+          allsegs$nMaj2_A[i] = allsegs$nMin2_A[i]
+          allsegs$nMin2_A[i] = 0
+        }
+      }
+      
+      is_normal = allsegs$nMaj1_A[i] == sex_chromosome_maj_exp
+      is_gained_1 = allsegs$nMaj1_A[i] > sex_chromosome_maj_exp
+      is_amplified_1 = allsegs$nMaj1_A[i] > sex_chromosome_maj_amp
+      is_lost_1 = allsegs$nMaj1_A[i] < sex_chromosome_maj_exp
+      
+      # Only required when subclonal copy number
+      if (!is.na(allsegs$nMaj2_A[i])) {
+        is_gained_2 = allsegs$nMaj2_A[i] > sex_chromosome_maj_exp
+        is_amplified_2 = allsegs$nMaj2_A[i] > sex_chromosome_maj_amp
+        is_lost_2 = allsegs$nMaj2_A[i] < sex_chromosome_maj_exp
+        
+        is_gained_min = F #(allsegs$nMin2_A[i] > ploidy/2 & allsegs$nMin1_A[i] != allsegs$nMin2_A[i])
+        is_gained_maj = (allsegs$nMaj2_A[i] > sex_chromosome_maj_exp & allsegs$nMaj1_A[i] != allsegs$nMaj2_A[i])
+        
+        is_amplified_min = F #(allsegs$nMin2_A[i] > ploidy*2 & allsegs$nMin1_A[i] != allsegs$nMin2_A[i])
+        is_amplified_maj = (allsegs$nMaj2_A[i] > sex_chromosome_maj_amp & allsegs$nMaj1_A[i] != allsegs$nMaj2_A[i])
+
+        is_lost_min = F #(allsegs$nMin1_A[i] < ploidy/2 & allsegs$nMin1_A[i] != allsegs$nMin2_A[i])        
+        is_lost_maj = (allsegs$nMaj1_A[i] < sex_chromosome_maj_exp & allsegs$nMaj1_A[i] != allsegs$nMaj2_A[i])
+      }
+      
+    } else {
+     
+      is_normal = (allsegs$nMaj1_A[i] == ploidy/2) & (allsegs$nMin1_A[i] == ploidy/2)
+      is_gained_1 = (allsegs$nMaj1_A[i] > ploidy/2 | allsegs$nMin1_A[i] > ploidy/2)
+      is_amplified_1 = (allsegs$nMaj1_A[i] > ploidy*2) | (allsegs$nMin1_A[i] > ploidy*2)
+      is_lost_1 = (allsegs$nMaj1_A[i] < ploidy/2) | (allsegs$nMin1_A[i] < ploidy/2)
+      
+      # Only required when subclonal copy number
+      if (!is.na(allsegs$nMaj2_A[i])) {
+        is_gained_2 = (allsegs$nMaj2_A[i] > ploidy/2 | allsegs$nMin2_A[i] > ploidy/2)
+        is_amplified_2 = (allsegs$nMaj2_A[i] > ploidy*2 | allsegs$nMin2_A[i] > ploidy*2)
+        is_lost_2 = (allsegs$nMaj2_A[i] < ploidy/2 | allsegs$nMin2_A[i] < ploidy/2)
+        
+        is_gained_min = (allsegs$nMin2_A[i] > ploidy/2 & allsegs$nMin1_A[i] != allsegs$nMin2_A[i])
+        is_gained_maj = (allsegs$nMaj2_A[i] > ploidy/2 & allsegs$nMaj1_A[i] != allsegs$nMaj2_A[i])
+        
+        is_amplified_min = (allsegs$nMin2_A[i] > ploidy*2 & allsegs$nMin1_A[i] != allsegs$nMin2_A[i])
+        is_amplified_maj = (allsegs$nMaj2_A[i] > ploidy*2 & allsegs$nMaj1_A[i] != allsegs$nMaj2_A[i])
+        
+        is_lost_maj = (allsegs$nMaj1_A[i] < ploidy/2 & allsegs$nMaj1_A[i] != allsegs$nMaj2_A[i])
+        is_lost_min = (allsegs$nMin1_A[i] < ploidy/2 & allsegs$nMin1_A[i] != allsegs$nMin2_A[i])
+      }
+    }
+
+    ######################################################
+    # Actual logic to perform the classification
+    ######################################################
     # Clonal copy number
     if (is.na(allsegs$nMaj2_A[i])) {
-      if (allsegs$nMin1_A[i] == 0 & allsegs$nMaj1_A[i] == 0) {
+      if (is_hd & !is_sex_chrom) {
         allsegsa <- rbind(allsegsa, allsegs[i,select_state_1])
         CNA <- c(CNA, "cHD")
       }
-      if (xor(allsegs$nMin1_A[i] == 0, allsegs$nMaj1_A[i] == 0)) {
+      if (is_loh_1 & !is_sex_chrom) {
         allsegsa <- rbind(allsegsa, allsegs[i,select_state_1])
         CNA <- c(CNA, "cLOH")
       }
-      if ((allsegs$nMaj1_A[i] > ploidy/2) | (allsegs$nMin1_A[i] > ploidy/2)) {
-        if ((allsegs$nMaj1_A[i] > ploidy*2) | (allsegs$nMin1_A[i] > ploidy*2)) {
+      if (is_gained_1) {
+        if (is_amplified_1) {
           allsegsa <- rbind(allsegsa, allsegs[i,select_state_1])
           CNA <- c(CNA, "cAmp")
         }
@@ -111,11 +189,11 @@ collate_bb_subclones = function(samplename, cndata, gender, outfile, ploidy=NA) 
           CNA <- c(CNA, "cGain")
         }
       }
-      if ((allsegs$nMaj1_A[i] == ploidy/2) & (allsegs$nMin1_A[i] == ploidy/2)) {
+      if (is_normal) {
         allsegsa <- rbind(allsegsa, allsegs[i,select_state_1])
         CNA <- c(CNA, "NoCNV")
       }
-      if ((allsegs$nMaj1_A[i] < ploidy/2) | (allsegs$nMin1_A[i] < ploidy/2)) {
+      if (is_lost_1) {
         allsegsa <- rbind(allsegsa, allsegs[i,select_state_1])
         CNA <- c(CNA, "cLoss")
       }
@@ -123,25 +201,22 @@ collate_bb_subclones = function(samplename, cndata, gender, outfile, ploidy=NA) 
     
     # Subclonal copy number
     if (!is.na(allsegs$nMaj2_A[i])) {
-      if (allsegs$nMin1_A[i] == 0 & allsegs$nMaj1_A[i] == 0) {
+      if (is_hd & !is_sex_chrom) {
         CNA <- c(CNA, "sHD")
         allsegsa <- rbind(allsegsa, allsegs[i,select_state_1])
       }
-      if ((allsegs$nMin1_A[i] == 0 | allsegs$nMaj1_A[i] == 0) &
-            xor(allsegs$nMin2_A[i] == 0, allsegs$nMaj2_A[i] == 0)) {
+      if (is_loh_1 & is_loh_2 & !is_sex_chrom) {
         CNA <- c(CNA, "cLOH")
         tmp <- allsegs[i,select_state_2]
         names(tmp) <- names(allsegs[i,select_state_1])
         allsegsa <- rbind(allsegsa, tmp[,names(allsegs[i,select_state_1])])
       }
-      else if (xor(allsegs$nMin1_A[i] == 0, allsegs$nMaj1_A[i] == 0)) {
+      else if (is_loh_1 & !is_sex_chrom) {
         CNA <- c(CNA, "sLOH")
         allsegsa <- rbind(allsegsa, allsegs[i,select_state_1])
       }
-      if ((allsegs$nMaj1_A[i] > ploidy/2 | allsegs$nMin1_A[i] > ploidy/2) &
-            (allsegs$nMaj2_A[i] > ploidy/2 | allsegs$nMin2_A[i] > ploidy/2)) {
-        if ((allsegs$nMaj1_A[i] > ploidy*2 | allsegs$nMin1_A[i] > ploidy*2) &
-              (allsegs$nMaj2_A[i] > ploidy*2 | allsegs$nMin2_A[i] > ploidy*2)) {
+      if (is_gained_1 & is_gained_2) {
+        if (is_amplified_1 & is_amplified_2) {
           CNA <- c(CNA, "cAmp")
           allsegsa <- rbind(allsegsa, allsegs[i,select_state_1])
         }
@@ -150,10 +225,8 @@ collate_bb_subclones = function(samplename, cndata, gender, outfile, ploidy=NA) 
           allsegsa <- rbind(allsegsa, allsegs[i,select_state_1])
         }
       }
-      if ((allsegs$nMin2_A[i] > ploidy/2 & allsegs$nMin1_A[i] != allsegs$nMin2_A[i])|
-            (allsegs$nMaj2_A[i] > ploidy/2 & allsegs$nMaj1_A[i] != allsegs$nMaj2_A[i])) {
-        if ((allsegs$nMin2_A[i] > ploidy*2 & allsegs$nMin1_A[i] != allsegs$nMin2_A[i]) |
-              (allsegs$nMaj2_A[i] > ploidy*2 & allsegs$nMaj1_A[i] != allsegs$nMaj2_A[i])) {
+      if (is_gained_min | is_gained_maj) {
+        if (is_amplified_min | is_amplified_maj) {
           CNA <- c(CNA, "sAmp")
           tmp <- allsegs[i,select_state_2]
           names(tmp) <- names(allsegs[i,select_state_1])
@@ -166,26 +239,25 @@ collate_bb_subclones = function(samplename, cndata, gender, outfile, ploidy=NA) 
           allsegsa <- rbind(allsegsa, tmp[,names(allsegs[i,select_state_1])])
         }
       }
-      if ((allsegs$nMaj1_A[i] < ploidy/2 | allsegs$nMin1_A[i] < ploidy/2) &
-            (allsegs$nMaj2_A[i] < ploidy/2 | allsegs$nMin2_A[i] < ploidy/2)) {
+      if (is_lost_1 & is_lost_2) {
         CNA <- c(CNA, "cLoss")
         tmp <- allsegs[i,select_state_2]
         names(tmp) <- names(allsegs[i,select_state_1])
         allsegsa <- rbind(allsegsa, tmp[,names(allsegs[i,select_state_1])])
       }
-      if (((allsegs$nMaj1_A[i] < ploidy/2 & allsegs$nMaj1_A[i] != allsegs$nMaj2_A[i]) |
-             (allsegs$nMin1_A[i] < ploidy/2 & allsegs$nMin1_A[i] != allsegs$nMin2_A[i]))) {
+      if ((is_lost_maj | is_lost_min)) {
         allsegsa <- rbind(allsegsa, allsegs[i,select_state_1])
         CNA <- c(CNA, "sLoss")      
       }
     }
+
     if(i %% 100 ==0){
       print(paste(i,"/",tot))
     }
   }  
   
   allsegsa <- cbind(allsegsa, CNA)
-  allsegsa$frac1_A[allsegsa$CNA == "cGain"|allsegsa$CNA == "cAmp"|allsegsa$CNA == "cLOH"|allsegsa$CNA == "cHD"|allsegsa$CNA == "cLoss"] = 1
+  allsegsa$frac1_A[allsegsa$CNA == "cGain" | allsegsa$CNA == "cAmp" | allsegsa$CNA == "cLOH" | allsegsa$CNA == "cHD" | allsegsa$CNA == "cLoss"] = 1
   
   # Switch the columns
   allsegsa = data.frame(allsegsa[,-1], Tumour_Name=samplename)

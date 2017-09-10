@@ -2,21 +2,26 @@
 % Please edit documentation in R/copynumber.R
 \name{collate_bb_subclones}
 \alias{collate_bb_subclones}
-\title{This function takes a Battenberg subclones.txt file, pulls out the A copy number profile,
+\title{This function takes a Battenberg styled data.frame, pulls out the A copy number profile,
 then it calculates the total CN and a weighted ploidy before it subsets the input data
 by columns: "chr", "startpos", "endpos", "nMaj1_A", "nMin1_A", "frac1_A",
 "nMaj2_A", "nMin2_A", "frac2_A", "SDfrac_A".}
 \usage{
-collate_bb_subclones(samplename, bb_subclones_file, gender, outfile)
+collate_bb_subclones(samplename, cndata, gender, outfile, ploidy = NA,
+  exclude_sex_chroms = F)
 }
 \arguments{
-\item{samplename,}{A String containing the samplename}
+\item{samplename}{A String containing the samplename}
 
-\item{bb_subclones_file,}{A String containing the full path to a Battenberg subclones.txt file}
+\item{cndata}{A data.frame in Battenberg subclones format}
 
-\item{gender,}{Specify either the string male or female}
+\item{gender}{Specify either the string male or female}
 
-\item{outfile,}{A String with the full path to where the output should be written}
+\item{outfile}{A String with the full path to where the output should be written}
+
+\item{ploidy}{An optional parameter that is used to call gains/losses against. If higher than the ploidy a segment is considered a gain, lower a loss. When left as NA the sample ploidy is used (Default NA).}
+
+\item{exclude_sex_chroms}{Optional parameter whether to exclude sex chromosomes (Default FALSE)}
 }
 \description{
 Then logic is applied for classifying copy number aberrations into
