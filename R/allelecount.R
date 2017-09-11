@@ -152,22 +152,6 @@ dumpCounts.StrelkaIndel = function(vcf_file, tumour_outfile, refence_genome="hg1
 	dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="strelka_indel", normal_outfile=NA, refence_genome=refence_genome, samplename=NA, dummy_alt_allele=dummy_alt_allele, dummy_ref_allele=dummy_ref_allele)
 }
 
-#' Dump allele counts from vcf - Scalpel indel pipeline
-#'
-#' Dump allele counts stored in the info column of the VCF file. Output will go into a file
-#' supplied as tumour_outfile. It will be a fully formatted allele counts file as returned
-#' by alleleCounter. There are no counts for the matched normal.
-#' @param vcf_infile The vcf file to read in
-#' @param tumour_outfile File to save the tumour counts to
-#' @param refence_genome Optional parameter specifying the reference genome build used
-#' @param dummy_alt_allele Specify allele to be used to encode the alt counts (the indel can be multiple alleles)
-#' @param dummy_ref_allele Specify allele to be used to encode the ref counts (the indel can be multiple alleles)
-#' @author sd11
-#' @export
-dumpCounts.ScalpelIndel = function(vcf_file, tumour_outfile, refence_genome="hg19", dummy_alt_allele=NA, dummy_ref_allele=NA) {
-  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="scalpel_indel", normal_outfile=NA, refence_genome=refence_genome, samplename=NA, dummy_alt_allele=dummy_alt_allele, dummy_ref_allele=dummy_ref_allele)
-}
-
 #' Dump allele counts from vcf - Mutect
 #'
 #' Dump allele counts stored in the info column of the VCF file. Output will go into a file
