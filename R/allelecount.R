@@ -128,10 +128,44 @@ dumpCounts.ICGCconsensusSNV = function(vcf_infile, tumour_outfile, normal_outfil
 #' @param vcf_infile The vcf file to read in
 #' @param tumour_outfile File to save the tumour counts to
 #' @param refence_genome Optional parameter specifying the reference genome build used
+#' @param dummy_alt_allele Specify allele to be used to encode the alt counts (the indel can be multiple alleles)
+#' @param dummy_ref_allele Specify allele to be used to encode the ref counts (the indel can be multiple alleles)
 #' @author sd11
 #' @export
 dumpCounts.ICGCconsensusIndel = function(vcf_infile, tumour_outfile, refence_genome="hg19", dummy_alt_allele=NA, dummy_ref_allele=NA) {
   dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="icgc_consensus_indel", normal_outfile=NA, refence_genome=refence_genome, samplename=NA, dummy_alt_allele=dummy_alt_allele, dummy_ref_allele=dummy_ref_allele)
+}
+
+#' Dump allele counts from vcf - Strelka indel pipeline
+#'
+#' Dump allele counts stored in the info column of the VCF file. Output will go into a file
+#' supplied as tumour_outfile. It will be a fully formatted allele counts file as returned
+#' by alleleCounter. There are no counts for the matched normal.
+#' @param vcf_infile The vcf file to read in
+#' @param tumour_outfile File to save the tumour counts to
+#' @param refence_genome Optional parameter specifying the reference genome build used
+#' @param dummy_alt_allele Specify allele to be used to encode the alt counts (the indel can be multiple alleles)
+#' @param dummy_ref_allele Specify allele to be used to encode the ref counts (the indel can be multiple alleles)
+#' @author sd11
+#' @export
+dumpCounts.StrelkaIndel = function(vcf_file, tumour_outfile, refence_genome="hg19", dummy_alt_allele=NA, dummy_ref_allele=NA) {
+	dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="strelka_indel", normal_outfile=NA, refence_genome=refence_genome, samplename=NA, dummy_alt_allele=dummy_alt_allele, dummy_ref_allele=dummy_ref_allele)
+}
+
+#' Dump allele counts from vcf - Scalpel indel pipeline
+#'
+#' Dump allele counts stored in the info column of the VCF file. Output will go into a file
+#' supplied as tumour_outfile. It will be a fully formatted allele counts file as returned
+#' by alleleCounter. There are no counts for the matched normal.
+#' @param vcf_infile The vcf file to read in
+#' @param tumour_outfile File to save the tumour counts to
+#' @param refence_genome Optional parameter specifying the reference genome build used
+#' @param dummy_alt_allele Specify allele to be used to encode the alt counts (the indel can be multiple alleles)
+#' @param dummy_ref_allele Specify allele to be used to encode the ref counts (the indel can be multiple alleles)
+#' @author sd11
+#' @export
+dumpCounts.ScalpelIndel = function(vcf_file, tumour_outfile, refence_genome="hg19", dummy_alt_allele=NA, dummy_ref_allele=NA) {
+  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="scalpel_indel", normal_outfile=NA, refence_genome=refence_genome, samplename=NA, dummy_alt_allele=dummy_alt_allele, dummy_ref_allele=dummy_ref_allele)
 }
 
 #' Dump allele counts from vcf - Mutect
@@ -252,6 +286,12 @@ getCountsTumour = function(v, centre="sanger", samplename=NA, dummy_alt_allele=N
     if (is.na(samplename)) { stop("When dumping allele counts from the Mutect samplename must be supplied") }
     sample_col = which(colnames(VariantAnnotation::geno(v)$AD) == samplename)
     return(getAlleleCounts.mutect(v, sample_col))
+  } else if (centre=="strelka_indel") {
+    if (is.na(dummy_alt_allele) | is.na(dummy_ref_allele)) { stop("When dumping allele counts from the Strelka indels dummy_alt_allele and dummy_ref_allele must be supplied") }
+    return(getAlleleCounts.Strelka_indel(v, dummy_alt_allele=dummy_alt_allele, dummy_ref_allele=dummy_ref_allele))
+  } else if (centre=="scalpel_indel") {
+    if (is.na(dummy_alt_allele) | is.na(dummy_ref_allele)) { stop("When dumping allele counts from the Strelka indels dummy_alt_allele and dummy_ref_allele must be supplied") }
+    return(getAlleleCounts.Scalpel_indel(v, dummy_alt_allele=dummy_alt_allele, dummy_ref_allele=dummy_ref_allele))
   } else {
     print(paste("Supplied centre not supported:", centre))
     q(save="no", status=1)
@@ -362,12 +402,11 @@ getAlleleCounts.Broad = function(v, sample_col) {
 #' Dump allele counts in ICGC consensus SNV format
 #' 
 #' This function fetches allele counts from the info field in the VCF file.
-#' 
+#' Note: If there are multiple ALT alleles this function will only take the first mentioned! 
 #' @param v The vcf file
 #' @return An array with 4 columns: Counts for A, C, G, T
 #' @author sd11
 #' @noRd
-#' Note: If there are multiple ALT alleles this function will only take the first mentioned! 
 getAlleleCounts.ICGC_consensus_snv = function(v) {
   count.alt = info(v)$t_alt_count
   count.ref = info(v)$t_ref_count
@@ -382,14 +421,13 @@ getAlleleCounts.ICGC_consensus_snv = function(v) {
 #' Dump allele counts in ICGC consensus indel format
 #' 
 #' This function fetches allele counts from the info field in the VCF file.
-#' 
+#' Note: If there are multiple ALT alleles this function will only take the first mentioned! 
 #' @param v The vcf file
 #' @param dummy_alt_allele Dummy base to use to encode the alt allele, the counts will be saved in the corresponding column
 #' @param dummy_ref_allele Dummy base to use to encode the ref allele, the counts will be saved in the corresponding column
 #' @return An array with 4 columns: Counts for A, C, G, T
 #' @author sd11
 #' @noRd
-#' Note: If there are multiple ALT alleles this function will only take the first mentioned! 
 getAlleleCounts.ICGC_consensus_indel = function(v, dummy_alt_allele="A", dummy_ref_allele="C") {
   c = construct_allelecounter_table(count.ref=info(v)$t_ref_count, 
                                     count.alt=info(v)$t_alt_count, 
@@ -398,16 +436,33 @@ getAlleleCounts.ICGC_consensus_indel = function(v, dummy_alt_allele="A", dummy_r
   return(c)
 }
 
+#' Dump allele counts in Strelka indel format
+#'
+#' This function fetches allele counts from the info field in the VCF file.
+#'
+#' @param v The vcf file
+#' @param dummy_alt_allele Dummy base to use to encode the alt allele, the counts will be saved in the corresponding column
+#' @param dummy_ref_allele Dummy base to use to encode the ref allele, the counts will be saved in the corresponding column
+#' @return An array with 4 columns: Counts for A, C, G, T
+#' @author sd11
+#' @noRd
+getAlleleCounts.Strelka_indel = function(v, dummy_alt_allele="A", dummy_ref_allele="C") {
+  c = construct_allelecounter_table(count.ref=geno(v)$TAR[,2,1],
+				    count.alt=geno(v)$TIR[,2,1],
+				    allele.ref=rep(dummy_ref_allele, nrow(v)),
+				    allele.alt=rep(dummy_alt_allele, nrow(v)))
+  return(c)
+}
+
 #' Dump allele counts in Mutect format
 #' 
 #' This function fetches allele counts from the info field in the VCF file.
-#' 
+#' Note: If there are multiple ALT alleles this function will only take the first mentioned! 
 #' @param v The vcf file
 #' @param sample_col The column in which the counts are. If it's the first sample mentioned in the vcf this would be sample_col 1
 #' @return An array with 4 columns: Counts for A, C, G, T
 #' @author sd11
 #' @noRd
-#' Note: If there are multiple ALT alleles this function will only take the first mentioned! 
 getAlleleCounts.mutect = function(v, sample_col) {
   counts = do.call(rbind, geno(v)$AD[,sample_col])
   count.ref = counts[,1]
