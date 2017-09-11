@@ -19,8 +19,7 @@ identifyKataegis(samplename, dpInfile, outdir = ".", gamma_param = 25,
 
 \item{kmin}{Kmin parameter to be used for segmentation}
 
-\item{kataegis.threshold}{Intermutation distance, if NA will be set to: (a) 900000 > SNVs: 100,
-(b) 500000 > SNVs: 250, (c) 100000 > SNVs, (d) otherwise 1000 (Default NA)}
+\item{kataegis.threshold}{Intermutation distance, if NA will be set to: (a) 900000 > SNVs: 100, (b) 500000 > SNVs: 250, (c) 100000 > SNVs, (d) otherwise 1000 (Default NA)}
 
 \item{minMuts}{Minimum number of mutations within kataegis.threshold to call Kataegis}
 

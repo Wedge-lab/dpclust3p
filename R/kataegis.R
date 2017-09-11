@@ -5,8 +5,7 @@
 #' @param outdir Directory where output will be written
 #' @param gamma_param Gamma parameter to be used for segmentation
 #' @param kmin Kmin parameter to be used for segmentation
-#' @param kataegis.threshold Intermutation distance, if NA will be set to: (a) 900000 > SNVs: 100,
-#' (b) 500000 > SNVs: 250, (c) 100000 > SNVs, (d) otherwise 1000 (Default NA)
+#' @param kataegis.threshold Intermutation distance, if NA will be set to: (a) 900000 > SNVs: 100, (b) 500000 > SNVs: 250, (c) 100000 > SNVs, (d) otherwise 1000 (Default NA)
 #' @param minMuts Minimum number of mutations within kataegis.threshold to call Kataegis
 #' @param logScale Transform intermutation distance to logscale
 #' @param makePlots Make a figure for each Kataegis event
@@ -109,7 +108,7 @@ identifyKataegis<-function(samplename, dpInfile, outdir=".", gamma_param=25, kmi
     stop("number of kataegis variants is inconsistent")
   }
 
-  #' Remove the Kataegis SNVs from the DP input file
+  # Remove the Kataegis SNVs from the DP input file
   if (removeFromDPin) {
     # Filter the DP input file
     chrpos_kat = paste(kat.muts[,1], kat.muts[,2], sep="_")
