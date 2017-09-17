@@ -51,21 +51,33 @@ vcf2loci = function(vcf_files, fai_file, ign_file, outfile, dummy_alt_allele=NA,
   # Run through each supplied vcf file, collect the loci from each
   combined.loci = data.frame()
   for (vcf_file in vcf_files) {
-    vcf.cols = ncol(read.delim(vcf_file, comment.char="#", header=F, stringsAsFactor=F, nrows=1))
-    vcf.cols.default = 10 # vcf file standard contains 10 columns
-    vcf.colClasses = c(NA, NA, "NULL", NA, NA, rep("NULL", 5+(vcf.cols-vcf.cols.default)))
-    vcf.loci = read.delim(vcf_file, comment.char="#", header=F, stringsAsFactor=F, colClasses=vcf.colClasses)
-    colnames(vcf.loci) = c("chromosome", "pos", "ref","alt")
-    vcf.loci.sel = subset(vcf.loci, chromosome %in% fai$chromosome[allowed_chroms])
-    combined.loci = rbind(combined.loci, vcf.loci.sel)
+    read_data = tryCatch(read.delim(vcf_file, comment.char="#", header=F, stringsAsFactor=F, nrows=1),
+                         error = function(e) NULL)
+    
+    # check that there was data in the file
+    if (!is.null(read_data)) {
+      vcf.cols = ncol(read_data)
+      vcf.cols.default = 10 # vcf file standard contains 10 columns
+      vcf.colClasses = c(NA, NA, "NULL", NA, NA, rep("NULL", 5+(vcf.cols-vcf.cols.default)))
+      vcf.loci = read.delim(vcf_file, comment.char="#", header=F, stringsAsFactor=F, colClasses=vcf.colClasses)
+      colnames(vcf.loci) = c("chromosome", "pos", "ref","alt")
+      vcf.loci.sel = subset(vcf.loci, chromosome %in% fai$chromosome[allowed_chroms])
+      combined.loci = rbind(combined.loci, vcf.loci.sel)
+    }
   }
   
-  # Override the ref and alt alleles if desired
-  if (!is.na(dummy_alt_allele) & dummy_alt_allele!="NA") {
-    combined.loci$alt = dummy_alt_allele
-  }
-  if (!is.na(dummy_ref_allele) & dummy_ref_allele!="NA") {
-    combined.loci$ref = dummy_ref_allele
+  if (nrow(combined.loci) > 0) {
+    # Override the ref and alt alleles if desired
+    if (!is.na(dummy_alt_allele) & dummy_alt_allele!="NA") {
+      combined.loci$alt = dummy_alt_allele
+    }
+    if (!is.na(dummy_ref_allele) & dummy_ref_allele!="NA") {
+      combined.loci$ref = dummy_ref_allele
+    }
+  } else {
+    # no data found, generate an empty data.frame
+    combined.loci = data.frame(matrix(ncol = 4, nrow = 0))
+    colnames(combined.loci) = c("chromosome", "pos", "ref","alt")
   }
   
   # Remove duplicate entries
@@ -519,15 +531,27 @@ addYchromToBattenberg = function(subclone.data) {
 GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, is.male = F, out.dir = NULL, SNP.phase.file = NULL, mut.phase.file = NULL, adjust_male_y_chrom=F){
 
   write_output = function(info, outputfile) {
-	  # convert GenomicRanges object to df
-	  df = data.frame(chr=as.data.frame(seqnames(info)),
-			  start=start(info)-1,
-			  end=end(info))
-          df = cbind(df, as.data.frame(elementMetadata(info)))
-          colnames(df)[1] = "chr"
-          df = df[with(df, order(chr)),]
-          print(head(df))
-          write.table(df, outputfile, sep="\t", row.names=F, quote=F)
+    if (!is.null(info)) {
+  	  # convert GenomicRanges object to df
+  	  df = data.frame(chr=as.data.frame(seqnames(info)),
+  			  start=start(info)-1,
+  			  end=end(info))
+            df = cbind(df, as.data.frame(elementMetadata(info)))
+            colnames(df)[1] = "chr"
+            df = df[with(df, order(chr)),]
+            print(head(df))
+            
+    } else {
+      df = data.frame(matrix(ncol=16, nrow=0))
+      colnames(df) = c("chr", "start", "end", "WT.count", "mut.count", "subclonal.CN", "nMaj1","nMin1", "frac1", "nMaj2", "nMin2", "frac2", "phase", "mutation.copy.number", "subclonal.fraction", "no.chrs.bearing.mut")
+    }
+    write.table(df, outputfile, sep="\t", row.names=F, quote=F)
+  }
+  
+  if (is.null(info)) {
+    # No entries were found in the supplied VCF file, therefore generate an empty output file
+    write_output(info, outputfile)
+    return()
   }
   
   subclone.data = read.table(subclone.file,sep="\t",header=T,stringsAsFactors=F)
@@ -701,7 +725,11 @@ GetCellularity <- function(rho_and_psi_file) {
 #' Convenience function to fetch WTCount and mutCount
 #'@noRd
 GetWTandMutCount <- function(loci_file, allele_frequencies_file) {
-  subs.data = read.table(loci_file, sep='\t', header=F, stringsAsFactors=F)
+  subs.data = tryCatch(read.table(loci_file, sep='\t', header=F, stringsAsFactors=F), error=function(e) NA)
+  if (is.na(subs.data)) {
+    # Empty input
+    return(NULL)
+  }
   subs.data = subs.data[order(subs.data[,1], subs.data[,2]),]
   
   # Replace dinucleotides and longer with just the first base. Here we assume the depth of the second base is the same and the number of dinucleotides is so low that removing the second base is negligable
