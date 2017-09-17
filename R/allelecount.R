@@ -148,7 +148,7 @@ dumpCounts.ICGCconsensusIndel = function(vcf_infile, tumour_outfile, refence_gen
 #' @param dummy_ref_allele Specify allele to be used to encode the ref counts (the indel can be multiple alleles)
 #' @author sd11
 #' @export
-dumpCounts.StrelkaIndel = function(vcf_file, tumour_outfile, refence_genome="hg19", dummy_alt_allele=NA, dummy_ref_allele=NA) {
+dumpCounts.StrelkaIndel = function(vcf_infile, tumour_outfile, refence_genome="hg19", dummy_alt_allele=NA, dummy_ref_allele=NA) {
 	dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="strelka_indel", normal_outfile=NA, refence_genome=refence_genome, samplename=NA, dummy_alt_allele=dummy_alt_allele, dummy_ref_allele=dummy_ref_allele)
 }
 
@@ -181,13 +181,21 @@ dumpCountsFromVcf = function(vcf_infile, tumour_outfile, centre, normal_outfile=
   
   # Read in the vcf and dump the tumour counts in the right format
   v = VariantAnnotation::readVcf(vcf_infile, refence_genome)
-  tumour = getCountsTumour(v, centre=centre, samplename=samplename, dummy_alt_allele=dummy_alt_allele, dummy_ref_allele=dummy_ref_allele)
+  if (nrow(v) > 0) {
+    tumour = getCountsTumour(v, centre=centre, samplename=samplename, dummy_alt_allele=dummy_alt_allele, dummy_ref_allele=dummy_ref_allele)
+  } else {
+    tumour = NA
+  }
   tumour = formatOutput(tumour, v)
   write.output(tumour, tumour_outfile)
   
   # Optionally dump the normal counts in the right format
   if (!is.na(normal_outfile)) {
-    normal = getCountsNormal(v, centre=centre, samplename=samplename)
+    if (nrow(v) > 0) {
+      normal = getCountsNormal(v, centre=centre, samplename=samplename)
+    } else {
+      normal = NA
+    }
     normal = formatOutput(normal, v)
     write.output(normal, normal_outfile)
   }
@@ -196,7 +204,12 @@ dumpCountsFromVcf = function(vcf_infile, tumour_outfile, centre, normal_outfile=
 #' Format a 4 column counts table into the alleleCounter format. This function assumes A, C, G, T format.
 #' @noRd
 formatOutput = function(counts_table, v) {
-  output = data.frame(as.character(seqnames(v)), start(ranges(v)), counts_table, rowSums(counts_table))
+  # Check if the vcf object is empty, if so, generate dummy data
+  if (nrow(v)==0) {
+    output = data.frame(matrix(ncol = 7, nrow = 0))
+  } else {
+    output = data.frame(as.character(seqnames(v)), start(ranges(v)), counts_table, rowSums(counts_table))
+  }
   colnames(output) = c("#CHR","POS","Count_A","Count_C","Count_G","Count_T","Good_depth")
   return(output)
 }
