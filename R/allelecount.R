@@ -165,7 +165,7 @@ dumpCounts.StrelkaIndel = function(vcf_infile, tumour_outfile, refence_genome="h
 #' @author sd11
 #' @export
 dumpCounts.cgpPindel = function(vcf_infile, tumour_outfile, refence_genome="hg19", dummy_alt_allele=NA, dummy_ref_allele=NA) {
-  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="cgppindel_indel", normal_outfile=NA, refence_genome=refence_genome, samplename=NA, dummy_alt_allele=dummy_alt_allele, dummy_ref_allele=dummy_ref_allele)
+  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="cgppindel_indel", normal_outfile=NA, refence_genome=refence_genome, samplename=samplename, dummy_alt_allele=dummy_alt_allele, dummy_ref_allele=dummy_ref_allele)
 }
 
 #' Dump allele counts from vcf - Mutect
