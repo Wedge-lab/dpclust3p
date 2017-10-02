@@ -152,6 +152,22 @@ dumpCounts.StrelkaIndel = function(vcf_infile, tumour_outfile, refence_genome="h
 	dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="strelka_indel", normal_outfile=NA, refence_genome=refence_genome, samplename=NA, dummy_alt_allele=dummy_alt_allele, dummy_ref_allele=dummy_ref_allele)
 }
 
+#' Dump allele counts from vcf - CGP Pindel indel pipeline
+#'
+#' Dump allele counts stored in the info column of the VCF file. Output will go into a file
+#' supplied as tumour_outfile. It will be a fully formatted allele counts file as returned
+#' by alleleCounter. There are no counts for the matched normal.
+#' @param vcf_infile The vcf file to read in
+#' @param tumour_outfile File to save the tumour counts to
+#' @param refence_genome Optional parameter specifying the reference genome build used
+#' @param dummy_alt_allele Specify allele to be used to encode the alt counts (the indel can be multiple alleles)
+#' @param dummy_ref_allele Specify allele to be used to encode the ref counts (the indel can be multiple alleles)
+#' @author sd11
+#' @export
+dumpCounts.cgpPindel = function(vcf_infile, tumour_outfile, refence_genome="hg19", dummy_alt_allele=NA, dummy_ref_allele=NA) {
+  dumpCountsFromVcf(vcf_infile, tumour_outfile, centre="cgppindel_indel", normal_outfile=NA, refence_genome=refence_genome, samplename=NA, dummy_alt_allele=dummy_alt_allele, dummy_ref_allele=dummy_ref_allele)
+}
+
 #' Dump allele counts from vcf - Mutect
 #'
 #' Dump allele counts stored in the info column of the VCF file. Output will go into a file
@@ -289,6 +305,9 @@ getCountsTumour = function(v, centre="sanger", samplename=NA, dummy_alt_allele=N
   } else if (centre=="scalpel_indel") {
     if (is.na(dummy_alt_allele) | is.na(dummy_ref_allele)) { stop("When dumping allele counts from the Strelka indels dummy_alt_allele and dummy_ref_allele must be supplied") }
     return(getAlleleCounts.Scalpel_indel(v, dummy_alt_allele=dummy_alt_allele, dummy_ref_allele=dummy_ref_allele))
+  } else if (centre=="cgppindel_indel") {
+    sample_col = which(colnames(geno(v)$WTR)==samplename)
+    return(getAlleleCounts.cgpPindel_indel(v, sample_col=sample_col, dummy_alt_allele=dummy_alt_allele, dummy_ref_allele=dummy_ref_allele))
   } else {
     print(paste("Supplied centre not supported:", centre))
     q(save="no", status=1)
@@ -448,6 +467,25 @@ getAlleleCounts.Strelka_indel = function(v, dummy_alt_allele="A", dummy_ref_alle
 				    count.alt=geno(v)$TIR[,2,1],
 				    allele.ref=rep(dummy_ref_allele, nrow(v)),
 				    allele.alt=rep(dummy_alt_allele, nrow(v)))
+  return(c)
+}
+
+#' Dump allele counts in cgpPindel indel format
+#'
+#' This function fetches allele counts from the info field in the VCF file. Note that this requires running vafCorrect after cgpPindel.
+#'
+#' @param v The vcf file
+#' @param sample_col The column in which the counts are. If it's the first sample mentioned in the vcf this would be sample_col 1
+#' @param dummy_alt_allele Dummy base to use to encode the alt allele, the counts will be saved in the corresponding column
+#' @param dummy_ref_allele Dummy base to use to encode the ref allele, the counts will be saved in the corresponding column
+#' @return An array with 4 columns: Counts for A, C, G, T
+#' @author sd11
+#' @noRd
+getAlleleCounts.cgpPindel_indel = function(v, sample_col, dummy_alt_allele="A", dummy_ref_allele="C") {
+  c = construct_allelecounter_table(count.ref=geno(v)$WT[,sample_col],
+                                    count.alt=geno(v)$MTR[,sample_col],
+                                    allele.ref=rep(dummy_ref_allele, nrow(v)),
+                                    allele.alt=rep(dummy_alt_allele, nrow(v)))
   return(c)
 }
 
