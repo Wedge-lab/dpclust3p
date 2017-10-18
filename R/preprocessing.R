@@ -81,7 +81,9 @@ vcf2loci = function(vcf_files, fai_file, ign_file, outfile, dummy_alt_allele=NA,
   }
   
   # Remove duplicate entries
-  combined.loci = unique(combined.loci)
+  chrpos = paste0(combined.loci$chromosome, "_", combined.loci$pos)
+  chrpos_dup = chrpos[duplicated(chrpos)]
+  combined.loci = combined.loci[!chrpos %in% chrpos_dup,]
   write.table(combined.loci, col.names=F, quote=F, row.names=F, file=outfile, sep="\t")
 }
 
