@@ -109,6 +109,7 @@ mut_mut_phasing = function(loci_file, phased_file, bam_file, bai_file, max_dista
   output <- data.frame(Chr = vector(mode="character",length=0), Pos1 = vector(mode="numeric",length=0), Ref1 = vector(mode="character",length=0), Var1 = vector(mode="character",length=0), Pos2 = vector(mode="numeric",length=0), Ref2 = vector(mode="character",length=0), Var2 = vector(mode="character",length=0))
   for(chr in chr.names){
     chr.muts = muts[muts$CHR==chr,]
+    if (nrow(chr.muts) < 2) { next() }
     no.muts = nrow(chr.muts)
     for(i in 1:(no.muts-1)){
       dist = chr.muts$POSITION[(i+1):no.muts] - chr.muts$POSITION[i]
