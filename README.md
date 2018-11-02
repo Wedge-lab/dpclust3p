@@ -18,6 +18,7 @@ The typical usage is to create the DPClust input data. See `inst/example` for a 
  * Convert allele counts and copy number information into DPClust input
 
 The R package contains many functions from which one can build their own pipeline
+
 | File | Description |
 |---|---|
 | preprocessing.R | Main preprocessing functions to create DPClust input, perform mutation phasing, filter by mutational signature |
