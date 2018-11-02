@@ -851,3 +851,45 @@ addVcfInfoCol = function(vcf, data, number, type, description, abbreviation) {
   info(vcf)[,abbreviation] <- as(data, "CharacterList")
   return(vcf)
 }
+
+##############################################
+# Produce project master file
+##############################################
+#' Creates a DPClust project master file
+#' 
+#' @param outputfile Full path with filename where the output will be written
+#' @param donornames A vector with donor identifiers, use the same donor identifier to match multiple samplenames for a multi-sample DPClust run
+#' @param samplenames A vector with sample identifiers
+#' @param purities A vector with a purity value per sample
+#' @param sex A vector with the sex of each donor
+#' @param datafiles Vector with filenames in which the DPClust input is contained (Default: [samplename]_allDirichletProcessInfo.txt)
+#' @param cnadatafiles A vector with CNA DPClust input files (Default: NULL)
+#' @param indeldatafiles A vector with indel DPClust input files (Default: NULL)
+#' @author sd11
+#' @export
+createProjectFile = function(outputfile, donornames, samplenames, purities, sex, datafiles=paste(samplenames, "_allDirichletProcessInfo.txt", sep=""), cndatafiles=NULL, indeldatafiles=NULL) {
+  if (!all(c(length(samplenames), length(purities), length(sex), length(datafiles))==length(donornames))) {
+    stop("All provided vectors must be of the same length")
+  }
+  if (!is.null(cndatafiles)) {
+    if (length(cndatafiles)!=length(donornames)) {
+      stop("All provided vectors must be of the same length")
+    }
+  }
+  if (!is.null(indeldatafiles)) {
+    if (length(indeldatafiles)!=length(donornames)) {
+      stop("All provided vectors must be of the same length")
+    }
+  }
+  
+  output = data.frame(sample=donornames, 
+                      subsample=samplenames, 
+                      datafile=datafiles, 
+                      cellularity=purities, 
+                      sex=sex, 
+                      cnadatafile=ifelse(!is.null(cnadatafiles), cnadatafiles, NA),
+                      indeldatafiles=ifelse(!is.null(indeldatafiles), indeldatafiles, NA), stringsAsFactors=F)
+  write.table(output, file=outputfile, quote=F, row.names=F, sep="\t")
+}
+
+
