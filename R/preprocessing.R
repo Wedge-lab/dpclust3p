@@ -738,19 +738,29 @@ addVcfInfoCol = function(vcf, data, number, type, description, abbreviation) {
 #' @param indeldatafiles A vector with indel DPClust input files (Default: NULL)
 #' @author sd11
 #' @export
-createProjectFile = function(outputfile, donornames, samplenames, purities, sex, datafiles=paste(samplenames, "_allDirichletProcessInfo.txt", sep=""), cndatafiles=NULL, indeldatafiles=NULL) {
-  if (!all(c(length(samplenames), length(purities), length(sex), length(datafiles))==length(donornames))) {
-    stop("All provided vectors must be of the same length")
+createProjectFile = function(outputfile, donornames, samplenames, sex, purities=NULL, rho_and_psi_files=NULL, datafiles=paste(samplenames, "_allDirichletProcessInfo.txt", sep=""), cndatafiles=NULL, indeldatafiles=NULL) {
+  if (is.null(purities) & is.null(rho_and_psi_files)) {
+    stop("Please provide either a vector of purities or a vector of Battenberg rho_and_psi files")
   }
-  if (!is.null(cndatafiles)) {
-    if (length(cndatafiles)!=length(donornames)) {
-      stop("All provided vectors must be of the same length")
+  
+  .checklength = function(a) {
+    if (!is.null(a)) {
+      if (length(a)!=length(donornames)) {
+        stop("All provided vectors must be of the same length")
+      }
     }
   }
-  if (!is.null(indeldatafiles)) {
-    if (length(indeldatafiles)!=length(donornames)) {
-      stop("All provided vectors must be of the same length")
-    }
+  .checklength(donornames)
+  .checklength(samplenames)
+  .checklength(sex)
+  .checklength(purities)
+  .checklength(rho_and_psi_files)
+  .checklength(datafiles)
+  .checklength(indeldatafiles)
+  .checklength(cndatafiles)
+  
+  if (!is.null(rho_and_psi_files)) {
+    purities = unlist(lapply(rho_and_psi_files, GetCellularity))
   }
   
   output = data.frame(sample=donornames, 
