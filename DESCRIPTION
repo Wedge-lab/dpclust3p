@@ -1,7 +1,7 @@
 Package: dpclust3p
 Type: Package
 Title: Dirichlet Process Clustering Pre-Processing Package
-Version: 1.0.7
+Version: 1.0.8
 Author: Stefan Dentro
 Maintainer: Stefan Dentro <sd11@sanger.ac.uk>
 License: GPL-3
