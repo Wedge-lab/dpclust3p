@@ -1,6 +1,6 @@
 #'
-#' Simple DPClust preprocessing pipeline that takes a VCF file with SNV calls. Then fetches
-#' allele counts from the specified bam file. With the counts and the copy number fit it
+#' Simple DPClust preprocessing pipeline that takes a VCF file with SNV calls. It fetches
+#' allele counts from the specified VCF file. With the counts and the copy number fit it
 #' creates a DPClust input file with all the required columns.
 #' 
 #' Dependencies:
@@ -13,7 +13,6 @@ library(optparse)
 
 option_list = list(
   make_option(c("-s", "--samplename"), type="character", default=NULL, help="Samplename of the sample to run", metavar="character"),
-  make_option(c("-b", "--bamfile"), type="character", default=NULL, help="BAM file to extract mutation allele counts from, there must be a BAM index with the same name, but with an extra .bai extension", metavar="character"),
   make_option(c("-v", "--vcf"), type="character", default=NULL, help="VCF file with mutation data", metavar="character"),
   make_option(c("-r", "--rho_and_psi"), type="character", default=NULL, help="Battenberg rho and psi output file", metavar="character"),
   make_option(c("-c", "--copynumber"), type="character", default=NULL, help="Battenberg subclones output file with copy number data", metavar="character"),
@@ -27,7 +26,6 @@ opt_parser = OptionParser(option_list=option_list)
 opt = parse_args(opt_parser)
 
 samplename = opt$samplename
-bam_file = opt$bamfile
 vcf_file = opt$vcf
 rho_and_psi_file = opt$rho_and_psi
 subclones_file = opt$copynumber
@@ -42,8 +40,6 @@ ign_file = opt$ign
   }
 }
 
-.checkfile(bam_file)
-.checkfile(paste(bam_file, ".bai", sep=""))
 .checkfile(vcf_file)
 .checkfile(rho_and_psi_file)
 .checkfile(subclones_file)
@@ -65,7 +61,7 @@ allelecounts_file = file.path(output_dir, paste(samplename, "_alleleFrequencies.
 vcf2loci(vcf_file=vcf_file, fai_file=fai_file, ign_file=ign_file, outfile=loci_file)
 
 # Fetch allele counts
-alleleCount(locifile=loci_file, bam=bam_file, outfile=allelecounts_file, min_baq=20, min_maq=35)
+dumpCounts.Sanger(vcf_infile=vcf_file, tumour_outfile=allelecounts_file)
 
 # Create dpIn file
 runGetDirichletProcessInfo(loci_file=loci_file, 
@@ -80,4 +76,3 @@ runGetDirichletProcessInfo(loci_file=loci_file,
 # Cleanup
 file.remove(loci_file)
 file.remove(allelecounts_file)
-

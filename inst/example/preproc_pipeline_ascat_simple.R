@@ -6,28 +6,62 @@
 #' Dependencies:
 #'  * The alleleCounter C utility must be in $PATH
 #' 
-#' v1.0 - 2015-11-04 - sd11@sanger.ac.uk
-
-args = commandArgs(T)
-samplename = toString(args[1]) # Name of the sample, used to name output files
-bam_file = toString(args[2]) # Full path to the bam file, there must be a bai file in the same directory
-vcf_file = toString(args[3]) # Full path to the vcf file with SNV calls. All calls in this will be used
-samplestatistics.file = toString(args[4]) # Full path to a samplestatistics output file from ASCAT NGS
-copynumber.caveman.file = toString(args[5]) # Full path to the copynumber.cabeman output file from ASCAT NGS
-sex = toString(args[6]) # Specify male or female
-output_dir = toString(args[7]) # Full path to where the output should be written
-fai_file = toString(args[8]) # Full path to the reference genome index file used for this sample
-ign_file = toString(args[9]) # Full path to simple list of chromosome names to ignore (must contain at least Y and MT)
+#' v1.1 - 2018-11-01 - sd11 [at] sanger.ac.uk
 
 library(dpclust3p)
+library(optparse)
+
+option_list = list(
+  make_option(c("-s", "--samplename"), type="character", default=NULL, help="Samplename of the sample to run", metavar="character"),
+  make_option(c("-b", "--bamfile"), type="character", default=NULL, help="BAM file to extract mutation allele counts from, there must be a BAM index with the same name, but with an extra .bai extension", metavar="character"),
+  make_option(c("-v", "--vcf"), type="character", default=NULL, help="VCF file with mutation data", metavar="character"),
+  make_option(c("--samplestats"), type="character", default=NULL, help="ASCAT NGS samplestatistics output file", metavar="character"),
+  make_option(c("-c", "--copynumber"), type="character", default=NULL, help="ASCAT NGS copynumber.caveman output file with copy number data", metavar="character"),
+  make_option(c("--sex"), type="character", default=NULL, help="Sex of the sample", metavar="character"),
+  make_option(c("-o", "--output"), type="character", default=NULL, help="Output directory", metavar="character"),
+  make_option(c("--fai"), type="character", default=NULL, help="Reference genome index", metavar="character"),
+  make_option(c("--ign"), type="character", default=NULL, help="File with a list of contigs to ignore", metavar="character")
+)
+
+opt_parser = OptionParser(option_list=option_list)
+opt = parse_args(opt_parser)
+
+samplename = opt$samplename
+bam_file = opt$bamfile
+vcf_file = opt$vcf
+samplestatistics.file = opt$samplestats
+copynumber.caveman.file = opt$copynumber
+sex = opt$sex
+output_dir = opt$output
+fai_file = opt$fai
+ign_file = opt$ign
+
+.checkfile = function(infile) {
+  if (!file.exists(infile)) {
+    stop(paste("File", infile, "does not exist", sep=""))
+  }
+}
+
+.checkfile(bam_file)
+.checkfile(paste(bam_file, ".bai", sep=""))
+.checkfile(vcf_file)
+.checkfile(samplestatistics.file)
+.checkfile(copynumber.caveman.file)
+.checkfile(fai_file)
+.checkfile(ign_file)
+
+if (!sex %in% c("male", "female")) {
+  stop("Provide male or female as sex")
+}
 
 # Define the final output file
-dpoutput_file = paste(output_dir, "/", samplename, "_allDirichletProcessInfo.txt", sep="")
+dpoutput_file = file.path(output_dir, paste(samplename, "_allDirichletProcessInfo.txt", sep=""))
 
 # Define various temp files
-loci_file = paste(output_dir, "/", samplename, "_loci.txt", sep="")
-allelecounts_file = paste(output_dir, "/", samplename, "_alleleFrequencies.txt", sep="")
-battenberg_output_prefix = paste(output_dir, "/", samplename, sep="")
+loci_file = file.path(output_dir, paste(samplename, "_loci.txt", sep=""))
+allelecounts_file = file.path(output_dir, paste(samplename, "_alleleFrequencies.txt", sep=""))
+
+battenberg_output_prefix = file.path(output_dir, samplename)
 subclones_file = paste(battenberg_output_prefix, "_subclones.txt", sep="")
 rho_and_psi_file = paste(battenberg_output_prefix, "_rho_and_psi.txt", sep="")
 
@@ -49,3 +83,9 @@ runGetDirichletProcessInfo(loci_file=loci_file,
                            SNP.phase.file="NA", 
                            mut.phase.file="NA", 
                            output_file=dpoutput_file)
+
+# Cleanup
+file.remove(loci_file)
+file.remove(allelecounts_file)
+file.remove(subclones_file)
+file.remove(rho_and_psi_file)
