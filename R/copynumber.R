@@ -1,3 +1,132 @@
+############################################
+# Copy number convert scripts
+############################################
+
+#' Transform ASCAT output into Battenberg
+#' 
+#' This function takes the ascat segments, acf and ploidy files to create
+#' a minimum Battenberg subclones and rho_and_psi file for use in pre-processing.
+#' These files only contain the essentials required by this package.
+#' @param outfile.prefix String prefix for the output files. Internally _subclones.txt and _rho_and_psi.txt will be added.
+#' @param segments.file String pointing to a segments.txt ASCAT output file
+#' @param acf.file String pointing to a acf.txt ASCAT output file
+#' @param ploidy.file String pointing to a ploidy.txt ASCAT output file
+#' @author sd11
+#' @export
+ascatToBattenberg = function(outfile.prefix, segments.file, acf.file, ploidy.file) {
+  # Construct a minimum Battenberg file with the copy number segments
+  d = read.table(segments.file, header=T, stringsAsFactors=F)
+  subclones = d[,2:6]
+  colnames(subclones)[4] = "nMaj1_A"
+  colnames(subclones)[5] = "nMin1_A"
+  subclones$frac1_A = 1
+  subclones$nMaj2_A = NA
+  subclones$nMin2_A = NA
+  subclones$frac2_A = NA
+  subclones$SDfrac_A = NA
+  write.table(subclones, paste(outfile.prefix, "_subclones.txt", sep=""), quote=F, sep="\t")
+  
+  # Now construct a minimum rho/psi file
+  cellularity = read.table(acf.file, header=T)[1,1]
+  ploidy = read.table(ploidy.file, header=T)[1,1]
+  
+  purity_ploidy = array(NA, c(3,5))
+  colnames(purity_ploidy) = c("rho", "psi", "ploidy", "distance", "is.best")
+  rownames(purity_ploidy) = c("ASCAT", "FRAC_GENOME", "REF_SEG")
+  purity_ploidy["FRAC_GENOME", "rho"] = cellularity
+  purity_ploidy["FRAC_GENOME", "psi"] = ploidy
+  write.table(purity_ploidy, paste(outfile.prefix, "_rho_and_psi.txt", sep=""), quote=F, sep="\t")
+}
+
+#' Transform ASCAT NGS output into Battenberg
+#' 
+#' This function takes the ascat copynumber.caveman.csv and samplestatistics files to create
+#' a minimum Battenberg subclones and rho_and_psi file for use in pre-processing.
+#' These files only contain the essentials required by this package.
+#' @param outfile.prefix String prefix for the output files. Internally _subclones.txt and _rho_and_psi.txt will be added.
+#' @param copynumber.caveman.file String pointing to an ASCAT NGS copynumber.caveman.csv file
+#' @param samplestatistics.file String point to an ASCAT NGS samplestatistics.csv file
+#' @author sd11
+#' @export
+ascatNgsToBattenberg = function(outfile.prefix, copynumber.caveman.file, samplestatistics.file) {
+  # Construct a minimum Battenberg file with the copy number segments
+  d = read.table(copynumber.caveman.file, sep=",", header=F, stringsAsFactors=F)
+  colnames(d) = c("count", "chr", "startpos", "endpos", "normal_total", "normal_minor", "tumour_total", "tumour_minor")
+  subclones = d[,2:4]
+  subclones$nMaj1_A = d$tumour_total-d$tumour_minor
+  subclones$nMin1_A = d$tumour_minor
+  subclones$frac1_A = 1
+  subclones$nMaj2_A = NA
+  subclones$nMin2_A = NA
+  subclones$frac2_A = NA
+  write.table(subclones, paste(outfile.prefix, "_subclones.txt", sep=""), quote=F, sep="\t")
+  
+  # Now construct a minimum rho/psi file
+  samplestats = read.table(samplestatistics.file, header=F, stringsAsFactors=F)
+  
+  purity_ploidy = array(NA, c(3,5))
+  colnames(purity_ploidy) = c("rho", "psi", "ploidy", "distance", "is.best")
+  rownames(purity_ploidy) = c("ASCAT", "FRAC_GENOME", "REF_SEG")
+  purity_ploidy["FRAC_GENOME", "rho"] = samplestats[samplestats$V1=="rho",2]
+  purity_ploidy["FRAC_GENOME", "psi"] = samplestats[samplestats$V1=="Ploidy",2]
+  write.table(purity_ploidy, paste(outfile.prefix, "_rho_and_psi.txt", sep=""), quote=F, sep="\t")
+}
+
+#' Check if the Y chromosome is present and the donor is male. If this statement is TRUE we need to 
+#' there is no estimate of the Y chromosome, which BB currently provides as two copies of X
+#' @param subclone.data A read-in Battenberg subclones.txt file as a data.frame
+#' @return The input data.frame with a Y chromosome entry added and possible X chromosome adjustment
+#' @author sd11
+#' @noRd
+addYchromToBattenberg = function(subclone.data) {
+  # Take the largest segment on X chromosome
+  xlargest = which.max(subclone.data[subclone.data$chr=="X", ]$endpos - subclone.data[subclone.data$chr=="X", ]$startpos)
+  xlargest = subclone.data[subclone.data$chr=="X", ][xlargest,]
+  
+  # Get the total availability of X
+  xnmaj = xlargest$nMaj1_A * xlargest$frac1_A + ifelse(is.na(xlargest$frac2_A), 0, xlargest$nMaj2_A * xlargest$frac2_A)
+  xnmin = xlargest$nMin1_A * xlargest$frac1_A + ifelse(is.na(xlargest$frac2_A), 0, xlargest$nMin2_A * xlargest$frac2_A)
+  
+  # If there are no two copies we assume that Y was lost and make no changes
+  if (xnmaj + xnmin >=2 & xnmin >= 1) {
+    # We have at least 1 copy of either allele. One must therefore be the Y chromosome
+    
+    # Remove a copy of the X chromosome
+    ynMaj_1 = subclone.data[subclone.data$chr=="X", c("nMin1_A")]
+    yfrac_1 = subclone.data[subclone.data$chr=="X", c("frac1_A")]
+    subclone.data[subclone.data$chr=="X", c("nMin1_A")] = 0
+    
+    # if there was subclonal copy number we need to remove/adapt that too
+    if (!is.na(xlargest$frac2_A)) {
+      ynMaj_2 = subclone.data[subclone.data$chr=="X", c("nMin2_A")]
+      yfrac_2 = subclone.data[subclone.data$chr=="X", c("frac2_A")]
+      subclone.data[subclone.data$chr=="X", c("nMin2_A")] = 0
+    } else {
+      ynMaj_2 = NA
+      yfrac_2 = NA
+    }
+  } else {
+    # No 2 copies, we assume that Y has been lost
+    ynMaj_1 = 0
+    yfrac_1 = 1
+    ynMaj_2 = NA
+    yfrac_2 = NA
+  }
+  
+  # Add Y
+  subclone.data = rbind(subclone.data, 
+                        data.frame(chr="Y", startpos=0, endpos=59373566, BAF=NA, pval=NA, LogR=NA, ntot=NA, 
+                                   nMaj1_A=ynMaj_1, nMin1_A=0, frac1_A=yfrac_1, nMaj2_A=ynMaj_2, nMin2_A=NA, frac2_A=yfrac_2, SDfrac_A=NA, SDfrac_A_BS=NA, frac1_A_0.025=NA, frac1_A_0.975=NA, 
+                                   nMaj1_B=NA, nMin1_B=NA, frac1_B=NA, nMaj2_B=NA, nMin2_B=NA, frac2_B=NA, SDfrac_B=NA, SDfrac_B_BS=NA, frac1_B_0.025=NA, frac1_B_0.975=NA, 
+                                   nMaj1_C=NA, nMin1_C=NA, frac1_C=NA, nMaj2_C=NA, nMin2_C=NA, frac2_C=NA, SDfrac_C=NA, SDfrac_C_BS=NA, frac1_C_0.025=NA, frac1_C_0.975=NA, 
+                                   nMaj1_D=NA, nMin1_D=NA, frac1_D=NA, nMaj2_D=NA, nMin2_D=NA, frac2_D=NA, SDfrac_D=NA, SDfrac_D_BS=NA, frac1_D_0.025=NA, frac1_D_0.975=NA, 
+                                   nMaj1_E=NA, nMin1_E=NA, frac1_E=NA, nMaj2_E=NA, nMin2_E=NA, frac2_E=NA, SDfrac_E=NA, SDfrac_E_BS=NA, frac1_E_0.025=NA, frac1_E_0.975=NA, 
+                                   nMaj1_F=NA, nMin1_F=NA, frac1_F=NA, nMaj2_F=NA, nMin2_F=NA, frac2_F=NA, SDfrac_F=NA, SDfrac_F_BS=NA, frac1_F_0.025=NA, frac1_F_0.975=NA)
+  )
+  return(subclone.data)
+}
+
+
 ##############################################
 # Copy number preparations
 ##############################################
