@@ -4,9 +4,10 @@
 \alias{createProjectFile}
 \title{Creates a DPClust project master file}
 \usage{
-createProjectFile(outputfile, donornames, samplenames, purities, sex,
-  datafiles = paste(samplenames, "_allDirichletProcessInfo.txt", sep = ""),
-  cndatafiles = NULL, indeldatafiles = NULL)
+createProjectFile(outputfile, donornames, samplenames, sex, purities = NULL,
+  rho_and_psi_files = NULL, datafiles = paste(samplenames,
+  "_allDirichletProcessInfo.txt", sep = ""), cndatafiles = NULL,
+  indeldatafiles = NULL)
 }
 \arguments{
 \item{outputfile}{Full path with filename where the output will be written}
@@ -15,15 +16,15 @@ createProjectFile(outputfile, donornames, samplenames, purities, sex,
 
 \item{samplenames}{A vector with sample identifiers}
 
-\item{purities}{A vector with a purity value per sample}
-
 \item{sex}{A vector with the sex of each donor}
+
+\item{purities}{A vector with a purity value per sample}
 
 \item{datafiles}{Vector with filenames in which the DPClust input is contained (Default: [samplename]_allDirichletProcessInfo.txt)}
 
-\item{indeldatafiles}{A vector with indel DPClust input files (Default: NULL)}
+\item{cndatafiles}{A vector with CNA DPClust input files (Default: NULL)}
 
-\item{cnadatafiles}{A vector with CNA DPClust input files (Default: NULL)}
+\item{indeldatafiles}{A vector with indel DPClust input files (Default: NULL)}
 }
 \description{
 Creates a DPClust project master file

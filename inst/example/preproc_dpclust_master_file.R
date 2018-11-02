@@ -18,9 +18,9 @@ option_list = list(
 opt_parser = OptionParser(option_list=option_list)
 opt = parse_args(opt_parser)
 
-donornames = strsplit(opt$donornames, ",")
-samplenames = strsplit(opt$samplenames, ",")
-sex = strsplit(opt$sex, ",")
+donornames = unlist(strsplit(opt$donornames, ","))
+samplenames = unlist(strsplit(opt$samplenames, ","))
+sex = unlist(strsplit(opt$sex, ","))
 outputfile = opt$output
 
 if (!is.null(opt$rho_and_psi)) {

@@ -734,7 +734,7 @@ addVcfInfoCol = function(vcf, data, number, type, description, abbreviation) {
 #' @param purities A vector with a purity value per sample
 #' @param sex A vector with the sex of each donor
 #' @param datafiles Vector with filenames in which the DPClust input is contained (Default: [samplename]_allDirichletProcessInfo.txt)
-#' @param cnadatafiles A vector with CNA DPClust input files (Default: NULL)
+#' @param cndatafiles A vector with CNA DPClust input files (Default: NULL)
 #' @param indeldatafiles A vector with indel DPClust input files (Default: NULL)
 #' @author sd11
 #' @export
@@ -768,7 +768,7 @@ createProjectFile = function(outputfile, donornames, samplenames, sex, purities=
                       datafile=datafiles, 
                       cellularity=purities, 
                       sex=sex, 
-                      cnadatafile=ifelse(!is.null(cnadatafiles), cnadatafiles, NA),
+                      cnadatafile=ifelse(!is.null(cndatafiles), cndatafiles, NA),
                       indeldatafiles=ifelse(!is.null(indeldatafiles), indeldatafiles, NA), stringsAsFactors=F)
   write.table(output, file=outputfile, quote=F, row.names=F, sep="\t")
 }
