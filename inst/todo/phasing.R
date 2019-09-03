@@ -283,21 +283,21 @@ mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, 
         linked_to_B = linked.muts[i,ACGT[linked.muts$Var2[i]]]
         
         if (af < 0.5 & alt_count==1 & linked_to_A > 0 & linked_to_B == 0) {
-          linked.muts$Parental[i] = "MUT_ON_DELETED"
+          linked.muts$Parental[i] = "MUT_ON_MINOR_COPY"
         } else if (af < 0.5 & alt_count==1 & linked_to_A == 0 & linked_to_B > 0) {
-          linked.muts$Parental[i] = "MUT_ON_RETAINED"
+          linked.muts$Parental[i] = "MUT_ON_MAJOR_COPY"
         } else if (af > 0.5 & alt_count==1 & linked_to_A > 0 & linked_to_B == 0) {
-          linked.muts$Parental[i] = "MUT_ON_RETAINED"
+          linked.muts$Parental[i] = "MUT_ON_MAJOR_COPY"
         } else if (af > 0.5 & alt_count==1 & linked_to_A == 0 & linked_to_B > 0) {
-          linked.muts$Parental[i] = "MUT_ON_DELETED"
+          linked.muts$Parental[i] = "MUT_ON_MINOR_COPY"
         } else if (af > 0.5 & ref_count==1 & linked_to_A > 0 & linked_to_B == 0) {
-          linked.muts$Parental[i] = "MUT_ON_DELETED"
+          linked.muts$Parental[i] = "MUT_ON_MINOR_COPY"
         } else if (af > 0.5 & ref_count==1 & linked_to_A == 0 & linked_to_B > 0) {
-          linked.muts$Parental[i] = "MUT_ON_RETAINED"
+          linked.muts$Parental[i] = "MUT_ON_MAJOR_COPY"
         } else if (af < 0.5 & ref_count==1 & linked_to_A > 0 & linked_to_B == 0) {
-          linked.muts$Parental[i] = "MUT_ON_RETAINED"
+          linked.muts$Parental[i] = "MUT_ON_MAJOR_COPY"
         } else if (af < 0.5 & ref_count==1 & linked_to_A == 0 & linked_to_B > 0) {
-          linked.muts$Parental[i] = "MUT_ON_DELETED"
+          linked.muts$Parental[i] = "MUT_ON_MINOR_COPY"
         }
       }
     }
