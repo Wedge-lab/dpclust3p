@@ -6,7 +6,7 @@ This R package contains various functions to produce input data for [DPClust](ht
 ## Installation instructions
 dpclust3p is an R package and can be installed with the commands right below. It also requires the [alleleCounter](https://github.com/cancerit/allelecount) tool to be in `$PATH`.
 ```
-source("http://bioconductor.org/biocLite.R"); biocLite(c("optparse"","VariantAnnotation","GenomicRanges","Rsamtools","ggplot2","IRanges","S4Vectors","reshape2"))'
+source("http://bioconductor.org/biocLite.R"); biocLite(c("optparse","VariantAnnotation","GenomicRanges","Rsamtools","ggplot2","IRanges","S4Vectors","reshape2"))'
 devtools::install_github("Wedge-Oxford/dpclust3p")
 ```
 
