@@ -576,14 +576,14 @@ GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, 
       }
     }
   }	
-  
-  possible.zero.muts = intersect((1:length(info))[-non.zero.indices],which(!is.na(info$nMin1)))
-  possible.zero.muts = c(possible.zero.muts,non.zero.indices[p.vals2>0.05])
-  if(length(possible.zero.muts)>0){
-    del.indices = which(info$nMin1[possible.zero.muts]==0 & !info$phase[possible.zero.muts]=="MUT_ON_RETAINED")
-    info$subclonal.fraction[possible.zero.muts[del.indices]] = NA
-    info$no.chrs.bearing.mut[possible.zero.muts[del.indices]] = 0
-  }
+   
+  #possible.zero.muts = intersect((1:length(info))[-non.zero.indices],which(!is.na(info$nMin1)))
+  #possible.zero.muts = c(possible.zero.muts,non.zero.indices[p.vals2>0.05])
+  #if(length(possible.zero.muts)>0){
+  #  del.indices = which(info$nMin1[possible.zero.muts]==0 & !info$phase[possible.zero.muts]=="MUT_ON_RETAINED")
+  #  info$subclonal.fraction[possible.zero.muts[del.indices]] = NA
+  #  info$no.chrs.bearing.mut[possible.zero.muts[del.indices]] = 0
+  #}
   
   write_output(info, outputfile)
 }
