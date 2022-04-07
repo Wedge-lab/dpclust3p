@@ -604,6 +604,10 @@ GetWTandMutCount <- function(loci_file, allele_frequencies_file) {
     return(NULL)
   }
   subs.data = subs.data[order(subs.data[,1], subs.data[,2]),]
+
+  if (nrow(subs.data)!=nrow(unique(subs.data[, 1:2]))) {
+	  stop("The input contains at least one pair of mutations at the same position. Chromosome and position must be unique for this pipeline to run.")
+  }
   
   # Replace dinucleotides and longer with just the first base. Here we assume the depth of the second base is the same and the number of dinucleotides is so low that removing the second base is negligable
   subs.data[,3] = apply(as.data.frame(subs.data[,3]), 1, function(x) { substring(x, 1,1) })
