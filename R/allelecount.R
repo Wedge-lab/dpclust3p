@@ -40,27 +40,6 @@ getAltAllele = function(vcf) {
   return(unlist(clist))
 }
 
-#' Obtain ref allele for all variants as a vector
-#' 
-#' Dumps the ref allele in a vector. It takes only the first element if multiple ref alleles are listed
-#' @param vcf A VCF object
-#' @return A vector with the ref allele
-#' @author davidwedge
-#' @export
-getRefAllele = function(vcf) {
-  print("*")
-  clist = CharacterList(VariantAnnotation::ref(vcf))
-  #mult = elementNROWS(clist) > 1L
-  #mult = elementLengths(clist) > 1L 
-  #multiple alleles may not ever be returned for ref, but this check is included just in case
-  #if (any(mult)) {
-  #  warning(paste("Took first ref allele only for these variants: ", paste(seqnames(vcf), start(vcf))))
-  #}
-  print("**")
-  clist[mult] = lapply(clist[mult], paste0, collapse=",")
-  return(unlist(clist))
-}
-
 #' Dump allele counts from vcf - Sanger ICGC pancancer pipeline
 #'
 #' Dump allele counts stored in the sample columns of the VCF file. Output will go into a file
