@@ -4,8 +4,15 @@
 \alias{mut_cn_phasing}
 \title{Phase mutation to SNP/copy number}
 \usage{
-mut_cn_phasing(loci_file, phased_file, hap_file, bam_file, bai_file, outfile,
-  max_distance)
+mut_cn_phasing(
+  loci_file,
+  phased_file,
+  hap_file,
+  bam_file,
+  bai_file,
+  outfile,
+  max_distance
+)
 }
 \arguments{
 \item{loci_file}{A list of loci}

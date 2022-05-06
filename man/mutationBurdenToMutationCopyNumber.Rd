@@ -4,8 +4,12 @@
 \alias{mutationBurdenToMutationCopyNumber}
 \title{Mutation burden to mutation copy number}
 \usage{
-mutationBurdenToMutationCopyNumber(burden, totalCopyNumber, cellularity,
-  normalCopyNumber = rep(2, length(burden)))
+mutationBurdenToMutationCopyNumber(
+  burden,
+  totalCopyNumber,
+  cellularity,
+  normalCopyNumber = rep(2, length(burden))
+)
 }
 \arguments{
 \item{burden}{A vector containing mutation burdens}

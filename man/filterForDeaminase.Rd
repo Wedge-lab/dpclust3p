@@ -5,8 +5,13 @@
 \title{Convenience function that filters a with tri-nucleotide context annotated list of loci for 
 cytosine deaminase signature, or C>T at CpG.}
 \usage{
-filterForDeaminase(loci_file, outfile, ref_genome, trinucleotide_column = 5,
-  alt_allele_column = 4)
+filterForDeaminase(
+  loci_file,
+  outfile,
+  ref_genome,
+  trinucleotide_column = 5,
+  alt_allele_column = 4
+)
 }
 \arguments{
 \item{loci_file}{Filepath to a with tri-nucleotide context annotated loci}

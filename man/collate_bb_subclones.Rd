@@ -7,8 +7,14 @@ then it calculates the total CN and a weighted ploidy before it subsets the inpu
 by columns: "chr", "startpos", "endpos", "nMaj1_A", "nMin1_A", "frac1_A", 
 "nMaj2_A", "nMin2_A", "frac2_A", "SDfrac_A".}
 \usage{
-collate_bb_subclones(samplename, cndata, gender, outfile, ploidy = NA,
-  exclude_sex_chroms = F)
+collate_bb_subclones(
+  samplename,
+  cndata,
+  gender,
+  outfile,
+  ploidy = NA,
+  exclude_sex_chroms = F
+)
 }
 \arguments{
 \item{samplename}{A String containing the samplename}

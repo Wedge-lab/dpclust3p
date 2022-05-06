@@ -4,10 +4,17 @@
 \alias{createProjectFile}
 \title{Creates a DPClust project master file}
 \usage{
-createProjectFile(outputfile, donornames, samplenames, sex, purities = NULL,
-  rho_and_psi_files = NULL, datafiles = paste(samplenames,
-  "_allDirichletProcessInfo.txt", sep = ""), cndatafiles = NULL,
-  indeldatafiles = NULL)
+createProjectFile(
+  outputfile,
+  donornames,
+  samplenames,
+  sex,
+  purities = NULL,
+  rho_and_psi_files = NULL,
+  datafiles = paste(samplenames, "_allDirichletProcessInfo.txt", sep = ""),
+  cndatafiles = NULL,
+  indeldatafiles = NULL
+)
 }
 \arguments{
 \item{outputfile}{Full path with filename where the output will be written}

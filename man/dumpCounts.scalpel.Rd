@@ -4,9 +4,15 @@
 \alias{dumpCounts.scalpel}
 \title{Dump allele counts from vcf - Scalpel}
 \usage{
-dumpCounts.scalpel(vcf_infile, tumour_outfile, samplename,
-  normal_outfile = NA, refence_genome = "hg19", dummy_alt_allele = NA,
-  dummy_ref_allele = NA)
+dumpCounts.scalpel(
+  vcf_infile,
+  tumour_outfile,
+  samplename,
+  normal_outfile = NA,
+  refence_genome = "hg19",
+  dummy_alt_allele = NA,
+  dummy_ref_allele = NA
+)
 }
 \arguments{
 \item{vcf_infile}{The vcf file to read in}

@@ -4,9 +4,12 @@
 \alias{extend_bb_cn_categories}
 \title{This function extends existing categories by a list of sizes}
 \usage{
-extend_bb_cn_categories(infile, outfile, size_categories = c(`3` = 10^3, `4` =
-  10^4, `5` = 10^5, `6` = 10^6, `7` = 10^7, `8` = 10^8, `9` = 10^9, `10` =
-  10^10))
+extend_bb_cn_categories(
+  infile,
+  outfile,
+  size_categories = c(`3` = 10^3, `4` = 10^4, `5` = 10^5, `6` = 10^6, `7` = 10^7, `8` =
+    10^8, `9` = 10^9, `10` = 10^10)
+)
 }
 \arguments{
 \item{infile}{string that points to a collated Battenberg subclones file}
