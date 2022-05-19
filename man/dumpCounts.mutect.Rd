@@ -4,8 +4,13 @@
 \alias{dumpCounts.mutect}
 \title{Dump allele counts from vcf - Mutect}
 \usage{
-dumpCounts.mutect(vcf_infile, tumour_outfile, samplename, normal_outfile = NA,
-  refence_genome = "hg19")
+dumpCounts.mutect(
+  vcf_infile,
+  tumour_outfile,
+  samplename,
+  normal_outfile = NA,
+  refence_genome = "hg19"
+)
 }
 \arguments{
 \item{vcf_infile}{The vcf file to read in}

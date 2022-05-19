@@ -4,8 +4,13 @@
 \alias{dumpCounts.Broad}
 \title{Dump allele counts from vcf - Broad ICGC pancancer pipeline}
 \usage{
-dumpCounts.Broad(vcf_infile, tumour_outfile, normal_outfile = NA,
-  refence_genome = "hg19", samplename = NA)
+dumpCounts.Broad(
+  vcf_infile,
+  tumour_outfile,
+  normal_outfile = NA,
+  refence_genome = "hg19",
+  samplename = NA
+)
 }
 \arguments{
 \item{vcf_infile}{The vcf file to read in}

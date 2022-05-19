@@ -4,8 +4,16 @@
 \alias{runGetDirichletProcessInfo}
 \title{Create the DPClust input file}
 \usage{
-runGetDirichletProcessInfo(loci_file, allele_frequencies_file, cellularity_file,
-  subclone_file, gender, SNP.phase.file, mut.phase.file, output_file)
+runGetDirichletProcessInfo(
+  loci_file,
+  allele_frequencies_file,
+  cellularity_file,
+  subclone_file,
+  gender,
+  SNP.phase.file,
+  mut.phase.file,
+  output_file
+)
 }
 \arguments{
 \item{loci_file}{Simple four column file with chromosome, position, reference allele and alternative allele}

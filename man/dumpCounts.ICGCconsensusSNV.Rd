@@ -4,8 +4,13 @@
 \alias{dumpCounts.ICGCconsensusSNV}
 \title{Dump allele counts from vcf - ICGC pancancer consensus SNV pipeline}
 \usage{
-dumpCounts.ICGCconsensusSNV(vcf_infile, tumour_outfile, normal_outfile = NA,
-  refence_genome = "hg19", samplename = NA)
+dumpCounts.ICGCconsensusSNV(
+  vcf_infile,
+  tumour_outfile,
+  normal_outfile = NA,
+  refence_genome = "hg19",
+  samplename = NA
+)
 }
 \arguments{
 \item{vcf_infile}{The vcf file to read in}

@@ -4,8 +4,12 @@
 \alias{get_bb_cn_catalog}
 \title{Count how often each of the categories is present in this sample}
 \usage{
-get_bb_cn_catalog(infile, outfile, size_categories = c(`3` = 10^3, `4` = 10^4,
-  `5` = 10^5, `6` = 10^6, `7` = 10^7, `8` = 10^8, `9` = 10^9, `10` = 10^10))
+get_bb_cn_catalog(
+  infile,
+  outfile,
+  size_categories = c(`3` = 10^3, `4` = 10^4, `5` = 10^5, `6` = 10^6, `7` = 10^7, `8` =
+    10^8, `9` = 10^9, `10` = 10^10)
+)
 }
 \arguments{
 \item{infile}{string pointing to a collated Battenberg subclones file with extended CNA categories}

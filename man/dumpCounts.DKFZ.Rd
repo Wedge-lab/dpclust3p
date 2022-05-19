@@ -4,8 +4,13 @@
 \alias{dumpCounts.DKFZ}
 \title{Dump allele counts from vcf - DKFZ ICGC pancancer pipeline}
 \usage{
-dumpCounts.DKFZ(vcf_infile, tumour_outfile, normal_outfile = NA,
-  refence_genome = "hg19", samplename = NA)
+dumpCounts.DKFZ(
+  vcf_infile,
+  tumour_outfile,
+  normal_outfile = NA,
+  refence_genome = "hg19",
+  samplename = NA
+)
 }
 \arguments{
 \item{vcf_infile}{The vcf file to read in}

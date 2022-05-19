@@ -4,9 +4,18 @@
 \alias{identifyKataegis}
 \title{Identify Kataegis events in SNV mutation data}
 \usage{
-identifyKataegis(samplename, dpInfile, outdir = ".", gamma_param = 25,
-  kmin = 2, kataegis.threshold = NA, minMuts = 6, logScale = F,
-  makePlots = F, removeFromDPin = F)
+identifyKataegis(
+  samplename,
+  dpInfile,
+  outdir = ".",
+  gamma_param = 25,
+  kmin = 2,
+  kataegis.threshold = NA,
+  minMuts = 6,
+  logScale = F,
+  makePlots = F,
+  removeFromDPin = F
+)
 }
 \arguments{
 \item{samplename}{Samplename used when writing output files}

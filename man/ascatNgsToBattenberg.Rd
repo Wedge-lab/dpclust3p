@@ -4,8 +4,11 @@
 \alias{ascatNgsToBattenberg}
 \title{Transform ASCAT NGS output into Battenberg}
 \usage{
-ascatNgsToBattenberg(outfile.prefix, copynumber.caveman.file,
-  samplestatistics.file)
+ascatNgsToBattenberg(
+  outfile.prefix,
+  copynumber.caveman.file,
+  samplestatistics.file
+)
 }
 \arguments{
 \item{outfile.prefix}{String prefix for the output files. Internally _subclones.txt and _rho_and_psi.txt will be added.}

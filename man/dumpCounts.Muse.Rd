@@ -4,8 +4,13 @@
 \alias{dumpCounts.Muse}
 \title{Dump allele counts from vcf - MuSE ICGC pancancer pipeline}
 \usage{
-dumpCounts.Muse(vcf_infile, tumour_outfile, normal_outfile = NA,
-  refence_genome = "hg19", samplename = NA)
+dumpCounts.Muse(
+  vcf_infile,
+  tumour_outfile,
+  normal_outfile = NA,
+  refence_genome = "hg19",
+  samplename = NA
+)
 }
 \arguments{
 \item{vcf_infile}{The vcf file to read in}

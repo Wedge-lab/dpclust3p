@@ -3,7 +3,6 @@
 \docType{package}
 \name{dpclust3p}
 \alias{dpclust3p}
-\alias{dpclust3p-package}
 \title{Dirichlet Process Clustering PreProcessing Package}
 \author{
 Stefan Dentro, \email{sd11@sanger.ac.uk}
