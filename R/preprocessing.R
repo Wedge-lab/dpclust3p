@@ -401,7 +401,7 @@ mut_cn_phasing = function(loci_file, phased_file, hap_file, bam_file, bai_file, 
 
 #' Main function that creates the DP input file. A higher level function should be called by users
 #' @noRd
-GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, is.male = F, out.dir = NULL, SNP.phase.file = NULL, mut.phase.file = NULL, adjust_male_y_chrom=F){
+GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, is.male = F, out.dir = NULL, SNP.phase.file = NULL, mut.phase.file = NULL, adjust_male_y_chrom=F, remove_lost_mutations=T){
 
   write_output = function(info, outputfile) {
     if (!is.null(info)) {
@@ -577,13 +577,15 @@ GetDirichletProcessInfo<-function(outputfile, cellularity, info, subclone.file, 
     }
   }	
    
-  #possible.zero.muts = intersect((1:length(info))[-non.zero.indices],which(!is.na(info$nMin1)))
-  #possible.zero.muts = c(possible.zero.muts,non.zero.indices[p.vals2>0.05])
-  #if(length(possible.zero.muts)>0){
-  #  del.indices = which(info$nMin1[possible.zero.muts]==0 & !info$phase[possible.zero.muts]=="MUT_ON_RETAINED")
-  #  info$subclonal.fraction[possible.zero.muts[del.indices]] = NA
-  #  info$no.chrs.bearing.mut[possible.zero.muts[del.indices]] = 0
-  #}
+  if (remove_lost_mutations) {
+    possible.zero.muts = intersect((1:length(info))[-non.zero.indices],which(!is.na(info$nMin1)))
+    possible.zero.muts = c(possible.zero.muts,non.zero.indices[p.vals2>0.05])
+    if(length(possible.zero.muts)>0){
+      del.indices = which(info$nMin1[possible.zero.muts]==0 & !info$phase[possible.zero.muts]=="MUT_ON_RETAINED")
+      info$subclonal.fraction[possible.zero.muts[del.indices]] = NA
+      info$no.chrs.bearing.mut[possible.zero.muts[del.indices]] = 0
+    }
+  } 
   
   write_output(info, outputfile)
 }
@@ -657,9 +659,10 @@ GetWTandMutCount <- function(loci_file, allele_frequencies_file) {
 #' @param SNP.phase.file Output file from mut_mut_phasing, supply NA (as char) when not available
 #' @param mut.phase.file Output file from mut_cn_phasing, supply NA (as char) when not available
 #' @param output_file Name of the output file
+#' @param remove_lost_mutations Flag to turn removal of lost mutations on or off. This code protects against the calling of a cluster comprising of mutations lost in one sample, but still present elsewhere. By default these mutations are removed (Default: TRUE)
 #' @author sd11
 #' @export
-runGetDirichletProcessInfo = function(loci_file, allele_frequencies_file, cellularity_file, subclone_file, gender, SNP.phase.file, mut.phase.file, output_file) {
+runGetDirichletProcessInfo = function(loci_file, allele_frequencies_file, cellularity_file, subclone_file, gender, SNP.phase.file, mut.phase.file, output_file, remove_lost_mutations=T) {
   if(gender == 'male' | gender == 'Male') {
     isMale = T
   } else if(gender == 'female' | gender == 'Female') {
@@ -669,7 +672,7 @@ runGetDirichletProcessInfo = function(loci_file, allele_frequencies_file, cellul
   }
   info_counts = GetWTandMutCount(loci_file, allele_frequencies_file)
   cellularity = GetCellularity(cellularity_file)
-  GetDirichletProcessInfo(output_file, cellularity, info_counts, subclone_file, is.male=isMale, SNP.phase.file=SNP.phase.file, mut.phase.file=mut.phase.file)
+  GetDirichletProcessInfo(output_file, cellularity, info_counts, subclone_file, is.male=isMale, SNP.phase.file=SNP.phase.file, mut.phase.file=mut.phase.file, remove_lost_mutations=remove_lost_mutations)
 }
 
 ##############################################
