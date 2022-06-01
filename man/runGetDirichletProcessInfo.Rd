@@ -12,7 +12,8 @@ runGetDirichletProcessInfo(
   gender,
   SNP.phase.file,
   mut.phase.file,
-  output_file
+  output_file,
+  remove_lost_mutations = T
 )
 }
 \arguments{
@@ -31,6 +32,8 @@ runGetDirichletProcessInfo(
 \item{mut.phase.file}{Output file from mut_cn_phasing, supply NA (as char) when not available}
 
 \item{output_file}{Name of the output file}
+
+\item{remove_lost_mutations}{Flag to turn removal of lost mutations on or off. This code protects against the calling of a cluster comprising of mutations lost in one sample, but still present elsewhere. By default these mutations are removed (Default: TRUE)}
 }
 \description{
 Function that takes allele counts and a copy number profile to estimate mutation copy number,
