@@ -30,8 +30,8 @@ alleleCount = function(locifile, bam, outfile, min_baq=20, min_maq=35) {
 #' @export
 getAltAllele = function(vcf) {
   clist = CharacterList(VariantAnnotation::alt(vcf))
-  #mult = elementNROWS(clist) > 1L
-  mult = elementLengths(clist) > 1L 
+  mult = elementNROWS(clist) > 1L
+  #mult = elementLengths(clist) > 1L 
   if (any(mult)) {
     warning(paste("Took first alt allele only for these variants: ", paste(seqnames(vcf), start(vcf))))
   }
