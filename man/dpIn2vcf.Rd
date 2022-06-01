@@ -4,8 +4,14 @@
 \alias{dpIn2vcf}
 \title{DPClust input file to vcf}
 \usage{
-dpIn2vcf(vcf_infile, dpIn_file, vcf_outfile, fai_file, ign_file,
-  genome = "hg19")
+dpIn2vcf(
+  vcf_infile,
+  dpIn_file,
+  vcf_outfile,
+  fai_file,
+  ign_file,
+  genome = "hg19"
+)
 }
 \arguments{
 \item{vcf_infile}{Filename of the VCF file to use as a base}

@@ -4,8 +4,13 @@
 \alias{dumpCounts.Sanger}
 \title{Dump allele counts from vcf - Sanger ICGC pancancer pipeline}
 \usage{
-dumpCounts.Sanger(vcf_infile, tumour_outfile, normal_outfile = NA,
-  refence_genome = "hg19", samplename = NA)
+dumpCounts.Sanger(
+  vcf_infile,
+  tumour_outfile,
+  normal_outfile = NA,
+  refence_genome = "hg19",
+  samplename = NA
+)
 }
 \arguments{
 \item{vcf_infile}{The vcf file to read in}

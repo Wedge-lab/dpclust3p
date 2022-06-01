@@ -4,8 +4,13 @@
 \alias{dumpCounts.ICGCconsensusIndel}
 \title{Dump allele counts from vcf - ICGC pancancer consensus indel pipeline}
 \usage{
-dumpCounts.ICGCconsensusIndel(vcf_infile, tumour_outfile,
-  refence_genome = "hg19", dummy_alt_allele = NA, dummy_ref_allele = NA)
+dumpCounts.ICGCconsensusIndel(
+  vcf_infile,
+  tumour_outfile,
+  refence_genome = "hg19",
+  dummy_alt_allele = NA,
+  dummy_ref_allele = NA
+)
 }
 \arguments{
 \item{vcf_infile}{The vcf file to read in}

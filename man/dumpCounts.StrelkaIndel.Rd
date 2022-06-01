@@ -4,8 +4,13 @@
 \alias{dumpCounts.StrelkaIndel}
 \title{Dump allele counts from vcf - Strelka indel pipeline}
 \usage{
-dumpCounts.StrelkaIndel(vcf_infile, tumour_outfile, refence_genome = "hg19",
-  dummy_alt_allele = NA, dummy_ref_allele = NA)
+dumpCounts.StrelkaIndel(
+  vcf_infile,
+  tumour_outfile,
+  refence_genome = "hg19",
+  dummy_alt_allele = NA,
+  dummy_ref_allele = NA
+)
 }
 \arguments{
 \item{vcf_infile}{The vcf file to read in}

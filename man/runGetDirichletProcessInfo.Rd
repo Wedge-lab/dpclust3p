@@ -4,8 +4,17 @@
 \alias{runGetDirichletProcessInfo}
 \title{Create the DPClust input file}
 \usage{
-runGetDirichletProcessInfo(loci_file, allele_frequencies_file, cellularity_file,
-  subclone_file, gender, SNP.phase.file, mut.phase.file, output_file)
+runGetDirichletProcessInfo(
+  loci_file,
+  allele_frequencies_file,
+  cellularity_file,
+  subclone_file,
+  gender,
+  SNP.phase.file,
+  mut.phase.file,
+  output_file,
+  remove_lost_mutations = T
+)
 }
 \arguments{
 \item{loci_file}{Simple four column file with chromosome, position, reference allele and alternative allele}
@@ -23,6 +32,8 @@ runGetDirichletProcessInfo(loci_file, allele_frequencies_file, cellularity_file,
 \item{mut.phase.file}{Output file from mut_cn_phasing, supply NA (as char) when not available}
 
 \item{output_file}{Name of the output file}
+
+\item{remove_lost_mutations}{Flag to turn removal of lost mutations on or off. This code protects against the calling of a cluster comprising of mutations lost in one sample, but still present elsewhere. By default these mutations are removed (Default: TRUE)}
 }
 \description{
 Function that takes allele counts and a copy number profile to estimate mutation copy number,

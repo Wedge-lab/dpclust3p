@@ -4,8 +4,14 @@
 \alias{vcf2loci}
 \title{Transform vcf to loci file}
 \usage{
-vcf2loci(vcf_files, fai_file, ign_file, outfile, dummy_alt_allele = NA,
-  dummy_ref_allele = NA)
+vcf2loci(
+  vcf_files,
+  fai_file,
+  ign_file,
+  outfile,
+  dummy_alt_allele = NA,
+  dummy_ref_allele = NA
+)
 }
 \arguments{
 \item{vcf_files}{A vector of vcf files to be considered}

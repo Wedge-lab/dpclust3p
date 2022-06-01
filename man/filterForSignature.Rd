@@ -5,8 +5,14 @@
 \title{Filter a with tri-nucleotide context annotated list of loci for a particular signature
 supplied as a regex like so: (CAG)|(CTG)|(GAC)|(GTC).}
 \usage{
-filterForSignature(signature_anno_loci_file, signature_regex, outfile,
-  trinucleotide_column = 5, alt_alleles = NA, alt_allele_column = 4)
+filterForSignature(
+  signature_anno_loci_file,
+  signature_regex,
+  outfile,
+  trinucleotide_column = 5,
+  alt_alleles = NA,
+  alt_allele_column = 4
+)
 }
 \arguments{
 \item{signature_anno_loci_file}{Filepath to a with tri-nucleotide context annotated loci}
