@@ -151,8 +151,8 @@ mut_mut_phasing = function(loci_file, phased_file, bam_file, bai_file, max_dista
       count.data = rbind(count.data, data.frame(output[i,], 
                                                 Num_WT_WT=allele_pairs[[wt_wt]], 
                                                 Num_Mut_Mut=allele_pairs[[mut_mut]], 
-                                                Num_Mut_WT=allele_pairs[[mut_wt]], 
-                                                Num_WT_Mut=allele_pairs[[wt_mut]]))
+                                                Num_WT_Mut=allele_pairs[[wt_mut]],
+                                                Num_Mut_WT=allele_pairs[[mut_wt]]))
     }
     print("AFTER FIRST FOR in IF")
     # Categorise pairs of mutations
