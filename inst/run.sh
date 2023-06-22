@@ -19,42 +19,41 @@
 
 mkdir -p 00_Count_Rsamtools
 mkdir -p 00_Count_Rsamtools/${samplename}
-R --vanilla --slave -q -f Rsamtools_reads_new.r --args ${samplename} ${bam} ${loci_file} ${chr} ${outdir}
+R --vanilla --slave -q -f Rsamtools_reads.R --args ${samplename} ${bam} ${loci_file} ${chr} ${outdir}
 
 # Example(hg37): 
-# 		R --vanilla --slave -q -f ../Rsamtools_reads_new.r --args A22-I ./A22-I.bam ./A22_loci.txt 1 ./00_Count_Rsamtools/A22_I
+# 		R --vanilla --slave -q -f ../Rsamtools_reads.R --args A22-I ./A22-I.bam ./A22_loci.txt 1 ./00_Count_Rsamtools/A22_I
 # Example(hg38): 
-# 		R --vanilla --slave -q -f ../Rsamtools_reads_new.r --args A22-I ./A22-I.bam ./A22_loci.txt chr1 ./00_Count_Rsamtools/A22_I
+# 		R --vanilla --slave -q -f ../Rsamtools_reads.R --args A22-I ./A22-I.bam ./A22_loci.txt chr1 ./00_Count_Rsamtools/A22_I
 
 
 # Step 2 
 # Gnenerating DPClust input
 # Input: RSamtoolsCount from Step 1
 # count_path: output from Step 1 
-# Battenberg_Path: path for ${subclonal_file}
-# ce_path: path for ${rho_psi_file} 
+# Battenberg_Path: path for ${subclonal_file} and  ${rho_psi_file} 
 
 
 # Single sample 
-R --vanilla --slave -q -f Generate_singlesample.r --args ${samplename} \
+R --vanilla --slave -q -f Generate_singlesample.R --args ${samplename} \
 															${count_path} \
 															${Battenberg_Path} \ \
 															${outdir} 
 
 # Example
-# R --vanilla --slave -q -f Generate_singlesample.r --args A22-I 00_Count_Rsamtools/ \
+# R --vanilla --slave -q -f Generate_singlesample.R --args A22-I 00_Count_Rsamtools/ \
 #    Battenberg_Output \
 #    ./ \
 
 
 # Multiple sample 
-R --vanilla --slave -q -f Generate_multisample.r --args ${samplenames} \
+R --vanilla --slave -q -f Generate_multisample.R --args ${samplenames} \
 															${count_path} \
 															${Battenberg_Path} \ \
 															${outdir} 
 
 # Example
-# R --vanilla --slave -q -f Generate_singlesample.r --args c("A22-I","A22-H") 00_Count_Rsamtools/ \
+# R --vanilla --slave -q -f Generate_singlesample.R --args c("A22-I","A22-H") 00_Count_Rsamtools/ \
 #    Battenberg_Output \
 #    ./ \
 
@@ -68,8 +67,8 @@ R --vanilla --slave -q -f Generate_multisample.r --args ${samplenames} \
 # hg19.new.fa.fai: for chromosome in 1:22
 # hg19.fa.fai: for chromosome in chr1:chr22
 mkdir -p 03_Phasing
-R --vanilla --slave -q -f ./Phasing_locifile.r --args ${samplename} ${bam} ${loci_file} ${outdir}
-R --vanilla --slave -q -f ./Phasing_vcf.r --args ${samplename} ${bam} ${vcf} ${outdir}
+R --vanilla --slave -q -f ./Phasing_locifile.R --args ${samplename} ${bam} ${loci_file} ${outdir}
+R --vanilla --slave -q -f ./Phasing_vcf.R --args ${samplename} ${bam} ${vcf} ${outdir}
 
 # Example
 # R --vanilla --slave -q -f ./Phasing_locifile.R --args A22-I \
@@ -102,9 +101,9 @@ ${DPClust_input_path} \
 ${outdir} ${copy_major} ${copy_frac} ${copy_minor}
 
 # Example
-# R --vanilla --slave -q -f generate_clphasing.r --args A22-I ./ ./ ./ ./04_cl_phasing 1 1
-# R --vanilla --slave -q -f generate_clphasing.r --args A22-I ./ ./ ./ ./04_cl_phasing 1 1 1
-# R --vanilla --slave -q -f generate_clphasing.r --args A22-I ./ ./ ./ ./04_cl_phasing 1 1 0
+# R --vanilla --slave -q -f generate_clphasing.R --args A22-I ./ ./ ./ ./04_cl_phasing 1 1
+# R --vanilla --slave -q -f generate_clphasing.R --args A22-I ./ ./ ./ ./04_cl_phasing 1 1 1
+# R --vanilla --slave -q -f generate_clphasing.R --args A22-I ./ ./ ./ ./04_cl_phasing 1 1 0
 
 
 ###################
