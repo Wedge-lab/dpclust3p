@@ -51,6 +51,8 @@ for(samplename in samplenames){
   T[which(data[,4]=="T")] = alt_reads[which(data[,4]=="T")]
   
   D = A + C + G + T
+
+  t = samplename 
   
   ID = rep(t, times= dim(data)[1])
   
