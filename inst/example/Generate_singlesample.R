@@ -4,8 +4,7 @@ args = commandArgs(T)
 samplename = args[1]
 count_path = args[2]
 batt_path = args[3]
-ce_path = args[4]
-outdir = args[5]
+outdir = args[4]
 
 
 library(tidyverse)
