@@ -1,5 +1,5 @@
 ######################################
-#whole workkflow of PhaDPClust
+#whole workflow of PhaDPClust
 #Haoqi, 5th Nov, 2022
 #R Version 3.6.0
 ######################################
@@ -14,7 +14,7 @@
 # Chr ranges from 1:22; ranges from chr1:chr22 if using hg38
 # Run under R/3.6.0
 # For some samples, there may be ERRORs:
-#      ERROR : subscript contains out-of-bounds indices 
+#      ERROR: subscript contains out-of-bounds indices 
 #      This script still works
 
 mkdir -p 00_Count_Rsamtools
@@ -36,9 +36,9 @@ R --vanilla --slave -q -f Rsamtools_reads.R --args ${samplename} ${bam} ${loci_f
 
 # Single sample 
 R --vanilla --slave -q -f Generate_singlesample.R --args ${samplename} \
-															${count_path} \
-															${Battenberg_Path} \ \
-															${outdir} 
+							${count_path} \
+							${Battenberg_Path} \ \
+							${outdir} 
 
 # Example
 # R --vanilla --slave -q -f Generate_singlesample.R --args A22-I 00_Count_Rsamtools/ \
@@ -48,11 +48,12 @@ R --vanilla --slave -q -f Generate_singlesample.R --args ${samplename} \
 
 # Multiple sample 
 R --vanilla --slave -q -f Generate_multisample.R --args ${samplenames} \
-															${count_path} \
-															${Battenberg_Path} \ \
-															${outdir} 
+							${count_path} \
+							${Battenberg_Path} \ \
+							${outdir} 
 
 # Example
+# !!!!!!!!!!!!!!!!!!!!!!!!!!! samplenames passed in the wrong way!!! fix it!!!!!!!!!!!!!!!!!!
 # R --vanilla --slave -q -f Generate_singlesample.R --args c("A22-I","A22-H") 00_Count_Rsamtools/ \
 #    Battenberg_Output \
 #    ./ \
@@ -60,9 +61,9 @@ R --vanilla --slave -q -f Generate_multisample.R --args ${samplenames} \
 ###################
 # Step 3
 # Find all phased pairs of mutations from BAM files
-# Required: fai_file; ign_file (file path should be changed in Phasing.r)
+# Required: fai_file; ign_file (file path should be changed in Phasing.R)
 # Input: SNV loci file (or VCF file); BAM file; BAI file
-# Script: Phasing_locifile.r / Phasing_vcf.r
+# Script: Phasing_locifile.R / Phasing_vcf.R
 # Default setting: threshold of distance is 700 (line 20)
 # hg19.new.fa.fai: for chromosome in 1:22
 # hg19.fa.fai: for chromosome in chr1:chr22
@@ -85,7 +86,7 @@ R --vanilla --slave -q -f ./Phasing_vcf.R --args ${samplename} ${bam} ${vcf} ${o
 # Currently only use pairs from diplodi and haploidy region 
 # Required: dpclust input (end with "_ssDPI.txt")
 # Input: SNV loci file (or VCF file); BAM file;
-# Script: Generate_Phasing.r
+# Script: Generate_Phasing.R
 # Output: clphasing file (clphasing represent clonal phasing, that there is no subclonal gain or loss)
 
 # The last three number represent the copy.major, copy.minor, copy.frac
@@ -94,7 +95,7 @@ R --vanilla --slave -q -f ./Phasing_vcf.R --args ${samplename} ${bam} ${vcf} ${o
 # For muts from both diploid and haploid, they should be 1, 1
 
 mkdir -p 04_cl_phasing
-R --vanilla --slave -q -f generate_clphasing.r --args ${samplename} \
+R --vanilla --slave -q -f generate_clphasing.R --args ${samplename} \
 ${Phasing_dir} \
 ${Battenberg_Path} \
 ${DPClust_input_path} \
@@ -109,7 +110,7 @@ ${outdir} ${copy_major} ${copy_frac} ${copy_minor}
 ###################
 # Step 5
 # Run PhaDPClust
-# Required file: dataset.RData,clphasing.RData,DPClust input file
+# Required file: dataset.RData,clphasing.RData, DPClust input file
 #               function.R
 # Script: workflow_single.R
 # Num_subsamples: number of samples used, 10 at default
