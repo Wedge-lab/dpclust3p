@@ -53,8 +53,7 @@ R --vanilla --slave -q -f Generate_multisample.R --args ${samplenames} \
 							${outdir} 
 
 # Example
-# !!!!!!!!!!!!!!!!!!!!!!!!!!! samplenames passed in the wrong way!!! fix it!!!!!!!!!!!!!!!!!!
-# R --vanilla --slave -q -f Generate_singlesample.R --args c("A22-I","A22-H") 00_Count_Rsamtools/ \
+# R --vanilla --slave -q -f Generate_singlesample.R --args "A22-I,A22-H" 00_Count_Rsamtools/ \
 #    Battenberg_Output \
 #    ./ \
 
