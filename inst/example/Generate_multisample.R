@@ -1,7 +1,7 @@
 
 args = commandArgs(T)
 
-samplenames = args[1]
+samplenames = strsplit(args[1],",")
 count_path = args[2]
 Battenberg_Path = args[3]
 outdir = args[4]
