@@ -53,7 +53,7 @@ R --vanilla --slave -q -f Generate_multisample.R --args ${samplenames} \
 							${outdir} 
 
 # Example
-# R --vanilla --slave -q -f Generate_singlesample.R --args "A22-I,A22-H" 00_Count_Rsamtools/ \
+# R --vanilla --slave -q -f Generate_multisample.R --args "A22-I,A22-H" 00_Count_Rsamtools/ \
 #    Battenberg_Output \
 #    ./ \
 
