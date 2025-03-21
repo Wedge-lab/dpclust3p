@@ -162,7 +162,7 @@ filterForSignature = function(signature_anno_loci_file, signature_regex, outfile
   signature_anno_loci = read.table(signature_anno_loci_file, sep='\t', header=F, stringsAsFactors=F)
   signature_anno_loci_filt = signature_anno_loci[grepl(signature_regex, signature_anno_loci[,trinucleotide_column]), ]
 
-  if (!is.na(alt_alleles)) {
+  if (any(!is.na(alt_alleles))) {
     regex_split = gsub("(", "", signature_regex, fixed=T)
     regex_split = gsub(")", "", regex_split, fixed=T)
     regex_split = unlist(strsplit(regex_split, "|", fixed=T))
