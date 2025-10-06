@@ -598,8 +598,8 @@ GetCellularity <- function(rho_and_psi_file) {
 #' Convenience function to fetch WTCount and mutCount
 #'@noRd
 GetWTandMutCount <- function(loci_file, allele_frequencies_file) {
-  subs.data = tryCatch(read.table(loci_file, sep='\t', header=F, stringsAsFactors=F), error=function(e) NA)
-  if (is.na(subs.data)) {
+  subs.data = tryCatch(read.table(loci_file, sep='\t', header=F, stringsAsFactors=F), error=function(e) NULL)
+  if (is.null(subs.data)) {
     # Empty input
     return(NULL)
   }
