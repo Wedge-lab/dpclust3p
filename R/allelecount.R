@@ -504,11 +504,14 @@ getAlleleCounts.Strelka_indel = function(v, dummy_alt_allele="A", dummy_ref_alle
 #' @return An array with 4 columns: Counts for A, C, G, T
 #' @author sd11
 #' @noRd
+
 getAlleleCounts.cgpPindel_indel = function(v, sample_col, dummy_alt_allele="A", dummy_ref_allele="C") {
-  c = construct_allelecounter_table(count.ref=geno(v)$WT[,sample_col],
-                                    count.alt=geno(v)$MTR[,sample_col],
-                                    allele.ref=rep(dummy_ref_allele, nrow(v)),
-                                    allele.alt=rep(dummy_alt_allele, nrow(v)))
+  c = construct_allelecounter_table(
+        count.ref=geno(v)$WTR[,sample_col], # TYPO MLOVE 20_2_2026
+        count.alt=geno(v)$MTR[,sample_col],
+        allele.ref=rep("C", nrow(v)), # need to over-ride dummy_ref_allele, dummy_alt_allele 
+        allele.alt=rep("A", nrow(v))
+      )
   return(c)
 }
 
